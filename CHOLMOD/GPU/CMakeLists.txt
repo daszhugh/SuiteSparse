@@ -28,13 +28,13 @@ if ( SUITESPARSE_CUDA )
     set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSUITESPARSE_CUDA" )
     message ( STATUS "C++ flags for CUDA:  ${CMAKE_CXX_FLAGS}" )
     message ( STATUS "nvcc flags for CUDA: ${CMAKE_CUDA_FLAGS}" )
-    file ( GLOB CHOLMOD_CUDA_SOURCES "cholmod_gpu.c" "cholmod_l_gpu.c"
+    file ( GLOB CHOLMOD_CUDA_SOURCES "../Core/cholmod_error.c" "../Core/cholmod_l_error.c" "cholmod_gpu.c" "cholmod_l_gpu.c"
         "cholmod_gpu_kernels.cu" )
 else ( )
     project ( cholmod_cuda
         VERSION "${CHOLMOD_VERSION_MAJOR}.${CHOLMOD_VERSION_MINOR}.${CHOLMOD_VERSION_SUB}"
         LANGUAGES C CXX )
-    file ( GLOB CHOLMOD_CUDA_SOURCES "cholmod_gpu.c" "cholmod_l_gpu.c" )
+    file ( GLOB CHOLMOD_CUDA_SOURCES "../Core/cholmod_error.c" "../Core/cholmod_l_error.c" "cholmod_gpu.c" "cholmod_l_gpu.c" )
 endif ( )
 
 add_library ( cholmod_cuda SHARED ${CHOLMOD_CUDA_SOURCES} )
@@ -94,10 +94,10 @@ if ( SUITESPARSE_CUDA )
     # this must be a PUBLIC link, not PRIVATE, so the CHOLMOD library
     # itself can link against these libraries
     target_link_libraries ( cholmod_cuda PUBLIC CUDA::nvrtc CUDA::cudart_static
-        CUDA::nvToolsExt CUDA::cublas )
+        CUDA::nvToolsExt CUDA::cublas ${SUITESPARSE_CONFIG_LIBRARIES} )
     if ( NOT NSTATIC )
         target_link_libraries ( cholmod_cuda_static PUBLIC CUDA::nvrtc CUDA::cudart_static
-            CUDA::nvToolsExt CUDA::cublas )
+            CUDA::nvToolsExt CUDA::cublas ${SUITESPARSE_CONFIG_STATIC} )
     endif ( )
 endif ( )
 

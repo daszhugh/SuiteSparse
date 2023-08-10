@@ -143,7 +143,7 @@ if ( SUITESPARSE_CUDA )
     set_target_properties ( gpuqrengine PROPERTIES POSITION_INDEPENDENT_CODE ON )
     set_target_properties ( gpuqrengine PROPERTIES CUDA_SEPARABLE_COMPILATION ON )
     target_link_libraries ( gpuqrengine PRIVATE CUDA::nvrtc CUDA::cudart_static
-        CUDA::nvToolsExt CUDA::cublas )
+        CUDA::nvToolsExt CUDA::cublas ${SUITESPARSE_GPURUNTIME_LIBRARIES} ${SUITESPARSE_CONFIG_LIBRARIES} )
 endif ( )
 
 #-------------------------------------------------------------------------------
@@ -173,7 +173,7 @@ if ( NOT NSTATIC )
         set_target_properties ( gpuqrengine_static PROPERTIES CUDA_SEPARABLE_COMPILATION on )
         set_target_properties ( gpuqrengine_static PROPERTIES POSITION_INDEPENDENT_CODE on )
         target_link_libraries ( gpuqrengine_static PUBLIC CUDA::nvrtc CUDA::cudart_static
-            CUDA::nvToolsExt CUDA::cublas )
+            CUDA::nvToolsExt CUDA::cublas ${SUITESPARSE_GPURUNTIME_STATIC} ${SUITESPARSE_CONFIG_STATIC} )
     endif ( )
 endif ( )
 

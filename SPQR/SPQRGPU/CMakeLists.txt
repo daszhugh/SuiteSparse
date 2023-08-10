@@ -91,10 +91,10 @@ endif ( )
 target_link_libraries ( spqr_cuda PRIVATE ${CHOLMOD_LIBRARIES} )
 if ( SUITESPARSE_CUDA )
     target_link_libraries ( spqr_cuda PRIVATE CUDA::nvrtc CUDA::cudart_static
-        CUDA::nvToolsExt CUDA::cublas )
+        CUDA::nvToolsExt CUDA::cublas ${SUITESPARSE_GPURUNTIME_LIBRARIES} ${GPUQRENGINE_LIBRARIES} )
     if ( NOT NSTATIC )
         target_link_libraries ( spqr_cuda_static PUBLIC CUDA::nvrtc CUDA::cudart_static
-            CUDA::nvToolsExt CUDA::cublas )
+            CUDA::nvToolsExt CUDA::cublas ${SUITESPARSE_GPURUNTIME_STATIC} ${GPUQRENGINE_STATIC} )
     endif ( )
 endif ( )
 
