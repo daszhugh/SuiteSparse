@@ -52,7 +52,7 @@ if ( NOT NSTATIC )
 
     if ( MSVC )
         set_target_properties ( SPQR_CUDA_static PROPERTIES
-            OUTPUT_NAME SPQR_CUDA_static )
+            OUTPUT_NAME spqr_cuda_static )
     endif ( )
 endif ( )
 
