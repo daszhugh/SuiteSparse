@@ -5,6 +5,10 @@
 # Copyright (c) 2022-2023, Timothy A. Davis, All Rights Reserved.
 # SPDX-License-Identifier: BSD-3-clause
 
+# To build this example, add the location of the CMake config files to
+# CMAKE_PREFIX_PATH if the SuiteSparse libraries aren't installed at a
+# default location.
+
 #-------------------------------------------------------------------------------
 # get the version
 #-------------------------------------------------------------------------------
@@ -39,15 +43,6 @@ set ( CMAKE_MACOSX_RPATH TRUE )
 enable_language ( C CXX )
 include ( GNUInstallDirs )
 
-# set the module path for all Find*.cmake files.
-set ( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-    ${CMAKE_SOURCE_DIR}/cmake_modules
-    ${CMAKE_SOURCE_DIR}/../lib/cmake/SuiteSparse
-    ${CMAKE_INSTALL_PREFIX}/lib/cmake/SuiteSparse )
-# add path to cmake target files (if necessary)
-set ( CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH}
-    ${CMAKE_SOURCE_DIR}/../lib/cmake )
-
 #-------------------------------------------------------------------------------
 # define my project
 #-------------------------------------------------------------------------------
@@ -72,8 +67,10 @@ find_package ( CXSparse 4.2.1 REQUIRED )
 find_package ( GraphBLAS 8.2.1 )
 find_package ( KLU 2.2.2 REQUIRED )
 find_package ( KLU_CHOLMOD 2.2.2 REQUIRED )
+find_package ( LAGraph 1.0.2 )
 find_package ( LDL 3.2.1 REQUIRED )
 find_package ( Mongoose 3.2.1 REQUIRED )
+find_package ( ParU 1.0.0 REQUIRED )
 find_package ( RBio 4.2.1 REQUIRED )
 find_package ( SPEX 2.2.1 REQUIRED )
 find_package ( SPQR 4.2.2 REQUIRED )
@@ -81,8 +78,8 @@ find_package ( UMFPACK 6.2.2 REQUIRED )
 
 # look for all external libaries:
 find_package ( OpenMP REQUIRED )
-
-include ( SuiteSparseBLAS )
+find_package ( BLAS REQUIRED )
+find_package ( LAPACK REQUIRED )
 
 #-------------------------------------------------------------------------------
 # configure files
@@ -332,6 +329,24 @@ else ( )
     target_link_libraries ( my_cxx_static PUBLIC SuiteSparse::KLU_CHOLMOD )
 endif ( )
 
+# GraphBLAS:
+if ( TARGET SuiteSparse::LAGraph )
+    target_link_libraries ( my PRIVATE SuiteSparse::LAGraph )
+    target_link_libraries ( my_cxx PRIVATE SuiteSparse::LAGraph )
+    if ( TARGET SuiteSparse::LAGraph_static )
+        target_link_libraries ( my_static PUBLIC SuiteSparse::LAGraph_static )
+        target_link_libraries ( my_cxx_static PUBLIC SuiteSparse::LAGraph_static )
+    else ( )
+        target_link_libraries ( my_static PUBLIC SuiteSparse::LAGraph )
+        target_link_libraries ( my_cxx_static PUBLIC SuiteSparse::LAGraph )
+    endif ( )
+else ( )
+    target_compile_definitions ( my PRIVATE NO_LAGRAPH )
+    target_compile_definitions ( my_cxx PRIVATE NO_LAGRAPH )
+    target_compile_definitions ( my_static PRIVATE NO_LAGRAPH )
+    target_compile_definitions ( my_cxx_static PRIVATE NO_LAGRAPH )
+endif ( )
+
 # LDL:
 target_link_libraries ( my PRIVATE SuiteSparse::LDL )
 target_link_libraries ( my_cxx PRIVATE SuiteSparse::LDL )
@@ -352,6 +367,17 @@ if ( TARGET SuiteSparse::Mongoose_static )
 else ( )
     target_link_libraries ( my_static PUBLIC SuiteSparse::Mongoose )
     target_link_libraries ( my_cxx_static PUBLIC SuiteSparse::Mongoose )
+endif ( )
+
+# ParU:
+target_link_libraries ( my PRIVATE SuiteSparse::ParU )
+target_link_libraries ( my_cxx PRIVATE SuiteSparse::ParU )
+if ( TARGET SuiteSparse::ParU_static )
+    target_link_libraries ( my_static PUBLIC SuiteSparse::ParU_static )
+    target_link_libraries ( my_cxx_static PUBLIC SuiteSparse::ParU_static )
+else ( )
+    target_link_libraries ( my_static PUBLIC SuiteSparse::ParU )
+    target_link_libraries ( my_cxx_static PUBLIC SuiteSparse::ParU )
 endif ( )
 
 # RBio:
