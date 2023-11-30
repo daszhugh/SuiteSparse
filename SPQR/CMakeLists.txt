@@ -13,10 +13,10 @@
 # cmake 3.22 is required to find the BLAS in SuiteSparsePolicy.cmake
 cmake_minimum_required ( VERSION 3.22 )
 
-set ( SPQR_DATE "Oct 23, 2023" )
+set ( SPQR_DATE "Dec 30, 2023" )
 set ( SPQR_VERSION_MAJOR 4 CACHE STRING "" FORCE )
-set ( SPQR_VERSION_MINOR 2 CACHE STRING "" FORCE )
-set ( SPQR_VERSION_SUB   2 CACHE STRING "" FORCE )
+set ( SPQR_VERSION_MINOR 3 CACHE STRING "" FORCE )
+set ( SPQR_VERSION_SUB   0 CACHE STRING "" FORCE )
 
 message ( STATUS "Building SPQR version: v"
     ${SPQR_VERSION_MAJOR}.
@@ -61,18 +61,10 @@ if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
         find_package ( SuiteSparse_config 7.4.0 REQUIRED )
     endif ( )
 
-    find_package ( CHOLMOD 5.0.0
+    find_package ( CHOLMOD 5.1.0
         PATHS ${CMAKE_SOURCE_DIR}/../CHOLMOD/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::CHOLMOD )
-        find_package ( CHOLMOD 5.0.0 REQUIRED )
-    endif ( )
-endif ( )
-
-if ( NOT SUITESPARSE_ROOT_CMAKELISTS AND SUITESPARSE_CUDA )
-    find_package ( CHOLMOD_CUDA 5.0.0
-        PATHS ${CMAKE_SOURCE_DIR}/../CHOLMOD/build NO_DEFAULT_PATH )
-    if ( NOT TARGET SuiteSparse::CHOLMOD_CUDA )
-        find_package ( CHOLMOD_CUDA 5.0.0 REQUIRED )
+        find_package ( CHOLMOD 5.1.0 REQUIRED )
     endif ( )
 endif ( )
 
@@ -230,16 +222,11 @@ if ( SUITESPARSE_CUDA )
     # CUDA
     if ( BUILD_SHARED_LIBS )
         target_link_libraries ( SPQR PRIVATE
-            SuiteSparse::CHOLMOD_CUDA SPQR_CUDA GPUQREngine GPURuntime )
+            SPQR_CUDA GPUQREngine GPURuntime )
         target_compile_definitions ( SPQR PUBLIC "SUITESPARSE_CUDA" )
     endif ( )
     set ( SPQR_CFLAGS "-DSUITESPARSE_CUDA" )
     if ( BUILD_STATIC_LIBS )
-        if ( TARGET SuiteSparse::CHOLMOD_CUDA_static )
-            target_link_libraries ( SPQR_static PUBLIC SuiteSparse::CHOLMOD_CUDA_static )
-        else ( )
-            target_link_libraries ( SPQR_static PUBLIC SuiteSparse::CHOLMOD_CUDA )
-        endif ( )
         target_link_libraries ( SPQR_static PUBLIC
             SPQR_CUDA_static GPUQREngine_static GPURuntime_static )
         target_compile_definitions ( SPQR_static PUBLIC "SUITESPARSE_CUDA" )
@@ -431,11 +418,11 @@ if ( DEMO )
             target_link_libraries ( qrdemo_gpu3 PUBLIC SPQR_static SPQR_CUDA_static )
         endif ( )
         target_link_libraries ( qrdemo_gpu
-            PUBLIC SuiteSparse::CHOLMOD SuiteSparse::CHOLMOD_CUDA SuiteSparse::SuiteSparseConfig )
+            PUBLIC SuiteSparse::CHOLMOD SuiteSparse::SuiteSparseConfig )
         target_link_libraries ( qrdemo_gpu2
-            PUBLIC SuiteSparse::CHOLMOD SuiteSparse::CHOLMOD_CUDA SuiteSparse::SuiteSparseConfig )
+            PUBLIC SuiteSparse::CHOLMOD SuiteSparse::SuiteSparseConfig )
         target_link_libraries ( qrdemo_gpu3
-            PUBLIC SuiteSparse::CHOLMOD SuiteSparse::CHOLMOD_CUDA SuiteSparse::SuiteSparseConfig )
+            PUBLIC SuiteSparse::CHOLMOD SuiteSparse::SuiteSparseConfig )
     endif ( )
 
 else ( )

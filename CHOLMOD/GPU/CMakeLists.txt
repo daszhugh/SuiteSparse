@@ -20,9 +20,7 @@ message ( STATUS "Building CHOLMOD_CUDA version: v"
 
 include ( SuiteSparsePolicy )
 
-project ( cholmod_cuda
-    VERSION "${CHOLMOD_VERSION_MAJOR}.${CHOLMOD_VERSION_MINOR}.${CHOLMOD_VERSION_SUB}"
-    LANGUAGES C CXX CUDA )
+enable_language ( CUDA )
 set ( CMAKE_CUDA_FLAGS "-cudart=static -lineinfo -DSUITESPARSE_CUDA" )
 set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSUITESPARSE_CUDA" )
 message ( STATUS "C++ flags for CUDA:  ${CMAKE_CXX_FLAGS}" )
@@ -31,32 +29,11 @@ file ( GLOB CHOLMOD_CUDA_SOURCES "cholmod_gpu.c" "cholmod_l_gpu.c"
     "cholmod_gpu_kernels.cu" "../Utility/cholmod_error.c" "../Utility/cholmod_l_error.c" )
 
 if ( BUILD_SHARED_LIBS )
-    add_library ( CHOLMOD_CUDA SHARED ${CHOLMOD_CUDA_SOURCES} )
-
-    set_target_properties ( CHOLMOD_CUDA PROPERTIES
-        VERSION ${CHOLMOD_VERSION_MAJOR}.${CHOLMOD_VERSION_MINOR}.${CHOLMOD_VERSION_SUB}
-        CXX_STANDARD_REQUIRED ON
-        CXX_STANDARD 17
-        C_STANDARD_REQUIRED ON
-        C_STANDARD 11
-        OUTPUT_NAME cholmod_cuda
-        SOVERSION ${CHOLMOD_VERSION_MAJOR} )
+    target_sources ( CHOLMOD PRIVATE ${CHOLMOD_CUDA_SOURCES} )
 endif ( )
 
 if ( BUILD_STATIC_LIBS )
-    add_library ( CHOLMOD_CUDA_static STATIC ${CHOLMOD_CUDA_SOURCES} )
-
-    set_target_properties ( CHOLMOD_CUDA_static PROPERTIES
-        CXX_STANDARD_REQUIRED ON
-        CXX_STANDARD 17
-        C_STANDARD_REQUIRED ON
-        C_STANDARD 11
-        OUTPUT_NAME cholmod_cuda )
-
-    if ( MSVC )
-        set_target_properties ( CHOLMOD_CUDA_static PROPERTIES
-            OUTPUT_NAME cholmod_cuda_static )
-    endif ( )
+    target_sources ( CHOLMOD_static PRIVATE ${CHOLMOD_CUDA_SOURCES} )
 endif ( )
 
 set ( CHOLMOD_CUDA_INCLUDES
@@ -71,29 +48,29 @@ set ( CHOLMOD_CUDA_INCLUDES
 include_directories ( ${CHOLMOD_CUDA_INCLUDES} ${CUDAToolkit_INCLUDE_DIRS} )
 
 if ( BUILD_SHARED_LIBS )
-    target_include_directories ( CHOLMOD_CUDA PRIVATE
+    target_include_directories ( CHOLMOD PRIVATE
         ${CUDAToolkit_INCLUDE_DIRS}
         ${CHOLMOD_CUDA_INCLUDES} )
-    set_target_properties ( CHOLMOD_CUDA PROPERTIES POSITION_INDEPENDENT_CODE ON )
-    set_target_properties ( CHOLMOD_CUDA PROPERTIES CUDA_SEPARABLE_COMPILATION ON )
-    target_compile_definitions ( CHOLMOD_CUDA PUBLIC "SUITESPARSE_CUDA" )
+    set_target_properties ( CHOLMOD PROPERTIES POSITION_INDEPENDENT_CODE ON )
+    set_target_properties ( CHOLMOD PROPERTIES CUDA_SEPARABLE_COMPILATION ON )
+    target_compile_definitions ( CHOLMOD PUBLIC "SUITESPARSE_CUDA" )
 endif ( )
 
 if ( BUILD_STATIC_LIBS )
-    target_include_directories ( CHOLMOD_CUDA_static PRIVATE
+    target_include_directories ( CHOLMOD_static PRIVATE
         ${CUDAToolkit_INCLUDE_DIRS}
         ${CHOLMOD_CUDA_INCLUDES} )
-    set_target_properties ( CHOLMOD_CUDA_static PROPERTIES CUDA_SEPARABLE_COMPILATION on )
-    set_target_properties ( CHOLMOD_CUDA_static PROPERTIES POSITION_INDEPENDENT_CODE on )
-    target_compile_definitions ( CHOLMOD_CUDA_static PUBLIC "SUITESPARSE_CUDA" )
+    set_target_properties ( CHOLMOD_static PROPERTIES CUDA_SEPARABLE_COMPILATION on )
+    set_target_properties ( CHOLMOD_static PROPERTIES POSITION_INDEPENDENT_CODE on )
+    target_compile_definitions ( CHOLMOD_static PUBLIC "SUITESPARSE_CUDA" )
 endif ( )
 
 if ( BUILD_SHARED_LIBS )
-    target_link_libraries ( CHOLMOD_CUDA PRIVATE CUDA::nvrtc CUDA::cudart_static
-        CUDA::nvToolsExt CUDA::cublas SuiteSparse::SuiteSparseConfig )
+    target_link_libraries ( CHOLMOD PRIVATE
+        CUDA::nvrtc CUDA::cudart_static CUDA::nvtx3 CUDA::cublas SuiteSparse::SuiteSparseConfig )
 endif ( )
 if ( BUILD_STATIC_LIBS )
-    target_link_libraries ( CHOLMOD_CUDA_static PUBLIC CUDA::nvrtc CUDA::cudart_static
+    target_link_libraries ( CHOLMOD_CUDA_static PUBLIC CUDA::nvtx3 CUDA::cudart_static
         CUDA::nvToolsExt CUDA::cublas )
         if ( TARGET SuiteSparse::SuiteSparseConfig_static )
             target_link_libraries ( CHOLMOD_CUDA_static PUBLIC SuiteSparse::SuiteSparseConfig_static )

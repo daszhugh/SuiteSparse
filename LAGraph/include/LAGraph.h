@@ -37,10 +37,10 @@
 // See also the LAGraph_Version utility method, which returns these values.
 // These definitions are derived from LAGraph/CMakeLists.txt.
 
-#define LAGRAPH_DATE "Aug 2, 2023"
+#define LAGRAPH_DATE "Dec 30, 2023"
 #define LAGRAPH_VERSION_MAJOR  1
-#define LAGRAPH_VERSION_MINOR  0
-#define LAGRAPH_VERSION_UPDATE 2
+#define LAGRAPH_VERSION_MINOR  1
+#define LAGRAPH_VERSION_UPDATE 0
 
 //==============================================================================
 // include files and helper macros
@@ -98,6 +98,9 @@
 
 #if ( !LAGRAPH_VANILLA ) && defined ( GxB_SUITESPARSE_GRAPHBLAS )
     // use SuiteSparse, and its GxB* extensions
+    #if GxB_IMPLEMENTATION < GxB_VERSION (7,1,0)
+    #error "If using SuiteSparse::GraphBLAS, version 7.1.0 or later s required"
+    #endif
     #define LAGRAPH_SUITESPARSE 1
 #else
     // use any GraphBLAS library (possibly SuiteSparse) but with no GxB*
