@@ -26,7 +26,7 @@ set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSUITESPARSE_CUDA" )
 message ( STATUS "C++ flags for CUDA:  ${CMAKE_CXX_FLAGS}" )
 message ( STATUS "nvcc flags for CUDA: ${CMAKE_CUDA_FLAGS}" )
 file ( GLOB CHOLMOD_CUDA_SOURCES "cholmod_gpu.c" "cholmod_l_gpu.c"
-    "cholmod_gpu_kernels.cu" "../Utility/cholmod_error.c" "../Utility/cholmod_l_error.c" )
+    "cholmod_gpu_kernels.cu" )
 
 if ( BUILD_SHARED_LIBS )
     target_sources ( CHOLMOD PRIVATE ${CHOLMOD_CUDA_SOURCES} )
@@ -67,88 +67,9 @@ endif ( )
 
 if ( BUILD_SHARED_LIBS )
     target_link_libraries ( CHOLMOD PRIVATE
-        CUDA::nvrtc CUDA::cudart_static CUDA::nvtx3 CUDA::cublas SuiteSparse::SuiteSparseConfig )
+        CUDA::nvrtc CUDA::cudart_static CUDA::nvtx3 CUDA::cublas )
 endif ( )
 if ( BUILD_STATIC_LIBS )
-    target_link_libraries ( CHOLMOD_CUDA_static PUBLIC CUDA::nvtx3 CUDA::cudart_static
-        CUDA::nvToolsExt CUDA::cublas )
-        if ( TARGET SuiteSparse::SuiteSparseConfig_static )
-            target_link_libraries ( CHOLMOD_CUDA_static PUBLIC SuiteSparse::SuiteSparseConfig_static )
-        else ( )
-            target_link_libraries ( CHOLMOD_CUDA_static PUBLIC SuiteSparse::SuiteSparseConfig )
-        endif ( )
-endif ( )
-
-#-------------------------------------------------------------------------------
-# installation location
-#-------------------------------------------------------------------------------
-
-include ( CMakePackageConfigHelpers )
-
-if ( BUILD_SHARED_LIBS )
-    install ( TARGETS CHOLMOD_CUDA
-        EXPORT CHOLMOD_CUDATargets
-        LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
-        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
-        RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
-        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
-endif ( )
-if ( BUILD_STATIC_LIBS )
-    install ( TARGETS CHOLMOD_CUDA_static
-        EXPORT CHOLMOD_CUDATargets
-        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
-        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
-endif ( )
-
-# create (temporary) export target file during build
-export ( EXPORT CHOLMOD_CUDATargets
-    NAMESPACE SuiteSparse::
-    FILE ${CMAKE_CURRENT_BINARY_DIR}/../CHOLMOD_CUDATargets.cmake )
-
-# install export target, config and version files for find_package
-install ( EXPORT CHOLMOD_CUDATargets
-    NAMESPACE SuiteSparse::
-    DESTINATION ${SUITESPARSE_PKGFILEDIR}/cmake/CHOLMOD_CUDA )
-
-configure_package_config_file (
-    ../Config/CHOLMOD_CUDAConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/../CHOLMOD_CUDAConfig.cmake
-    INSTALL_DESTINATION ${SUITESPARSE_PKGFILEDIR}/cmake/CHOLMOD_CUDA )
-
-write_basic_package_version_file (
-    ${CMAKE_CURRENT_BINARY_DIR}/../CHOLMOD_CUDAConfigVersion.cmake
-    COMPATIBILITY SameMajorVersion )
-
-install ( FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/../CHOLMOD_CUDAConfig.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/../CHOLMOD_CUDAConfigVersion.cmake
-    DESTINATION ${SUITESPARSE_PKGFILEDIR}/cmake/CHOLMOD_CUDA )
-
-#-------------------------------------------------------------------------------
-# create pkg-config file
-#-------------------------------------------------------------------------------
-
-if ( NOT MSVC )
-    set ( prefix "${CMAKE_INSTALL_PREFIX}" )
-    set ( exec_prefix "\${prefix}" )
-    cmake_path ( IS_ABSOLUTE SUITESPARSE_LIBDIR SUITESPARSE_LIBDIR_IS_ABSOLUTE )
-    if (SUITESPARSE_LIBDIR_IS_ABSOLUTE)
-        set ( libdir "${SUITESPARSE_LIBDIR}")
-    else ( )
-        set ( libdir "\${exec_prefix}/${SUITESPARSE_LIBDIR}")
-    endif ( )
-    cmake_path ( IS_ABSOLUTE SUITESPARSE_INCLUDEDIR SUITESPARSE_INCLUDEDIR_IS_ABSOLUTE )
-    if (SUITESPARSE_INCLUDEDIR_IS_ABSOLUTE)
-        set ( includedir "${SUITESPARSE_INCLUDEDIR}")
-    else ( )
-        set ( includedir "\${prefix}/${SUITESPARSE_INCLUDEDIR}")
-    endif ( )
-    configure_file (
-        ../Config/CHOLMOD_CUDA.pc.in
-        CHOLMOD_CUDA.pc
-        @ONLY
-        NEWLINE_STYLE LF )
-    install ( FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/CHOLMOD_CUDA.pc
-        DESTINATION ${SUITESPARSE_PKGFILEDIR}/pkgconfig )
+    target_link_libraries ( CHOLMOD_static PUBLIC
+        CUDA::nvrtc CUDA::cudart_static CUDA::nvtx3 CUDA::cublas )
 endif ( )

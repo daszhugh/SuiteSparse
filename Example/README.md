@@ -21,7 +21,7 @@ to build a library that depends on SuiteSparse libraries.
 The 'my' library relies on the following SuiteSparse libraries, each of which
 has a cmake module to use in `find_package` that is installed alongside the
 compiled libraries (/usr/local/lib/cmake/SuiteSparse) `AMD`, `BTF`, `CAMD`,
-`CCOLAMD`, `CHOLMOD`, `CHOLMOD_CUDA`, `COLAMD`, `CXSparse`, `GPUQREngine`,
+`CCOLAMD`, `CHOLMOD`, `COLAMD`, `CXSparse`, `GPUQREngine`,
 `GraphBLAS`, `KLU`, `KLU_CHOLMOD`, `LDL`, `Mongoose`, `RBio`, `SPEX`, `SPQR`,
 `SPQR_CUDA`, `SuiteSparse_GPURuntime`, `SuiteSparse_config`, and `UMFPACK`.
 
