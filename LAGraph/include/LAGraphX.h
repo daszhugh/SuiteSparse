@@ -2,7 +2,7 @@
 // LAGraphX.h: include file for LAGraph experimental code
 //------------------------------------------------------------------------------
 
-// LAGraph, (c) 2019-2022 by The LAGraph Contributors, All Rights Reserved.
+// LAGraph, (c) 2019-2023 by The LAGraph Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 //
 // For additional details (including references to third party source code and
@@ -30,6 +30,15 @@
 #else
     // for other compilers
     #define LAGRAPHX_PUBLIC
+#endif
+
+//==============================================================================
+// for C++ applications:
+//==============================================================================
+
+#if defined ( __cplusplus )
+extern "C"
+{
 #endif
 
 //==============================================================================
@@ -881,5 +890,9 @@ int LAGraph_HelloWorld // a simple algorithm, just for illustration
     LAGraph_Graph G,
     char *msg
 ) ;
+
+#if defined ( __cplusplus )
+}
+#endif
 
 #endif

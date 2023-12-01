@@ -100,7 +100,7 @@ if ( BUILD_SHARED_LIBS )
         CUDA_RESOLVE_DEVICE_SYMBOLS ON
         CUDA_RUNTIME_LIBRARY Static )
     target_link_libraries ( GPUQREngine PRIVATE
-        CUDA::nvrtc CUDA::cudart_static CUDA::nvtx3 CUDA::cublas
+        CUDA::nvrtc CUDA::cudart_static CUDA::cublas
         SuiteSparse::SuiteSparseConfig GPURuntime )
     target_compile_definitions ( GPUQREngine PRIVATE "SUITESPARSE_CUDA" )
 
@@ -139,7 +139,7 @@ if ( BUILD_STATIC_LIBS )
         CUDA_RESOLVE_DEVICE_SYMBOLS ON
         CUDA_RUNTIME_LIBRARY Static )
     target_link_libraries ( GPUQREngine_static PUBLIC
-        CUDA::nvrtc CUDA::cudart_static CUDA::nvtx3 GPURuntime_static )
+        CUDA::nvrtc CUDA::cudart_static GPURuntime_static )
 
     if ( TARGET SuiteSparse::SuiteSparseConfig_static )
         target_link_libraries ( GPUQREngine_static PUBLIC SuiteSparse::SuiteSparseConfig_static )

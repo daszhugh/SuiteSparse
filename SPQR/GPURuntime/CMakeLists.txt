@@ -78,7 +78,7 @@ if ( BUILD_SHARED_LIBS )
         CUDA_SEPARABLE_COMPILATION ON
         CUDA_RUNTIME_LIBRARY Static )
     target_link_libraries ( GPURuntime PRIVATE
-        CUDA::nvrtc CUDA::cudart_static CUDA::nvtx3 CUDA::cublas SuiteSparse::SuiteSparseConfig )
+        CUDA::nvrtc CUDA::cudart_static CUDA::cublas SuiteSparse::SuiteSparseConfig )
     target_compile_definitions ( GPURuntime PRIVATE "SUITESPARSE_CUDA" )
 
     target_include_directories ( GPURuntime
@@ -114,7 +114,7 @@ if ( BUILD_STATIC_LIBS )
         CUDA_SEPARABLE_COMPILATION ON
         CUDA_RUNTIME_LIBRARY Static )
     target_link_libraries ( GPURuntime_static PUBLIC
-        CUDA::nvrtc CUDA::cudart_static CUDA::nvtx3 CUDA::cublas )
+        CUDA::nvrtc CUDA::cudart_static CUDA::cublas )
 
     if ( TARGET SuiteSparse::SuiteSparseConfig_static )
         target_link_libraries ( GPURuntime_static PUBLIC SuiteSparse::SuiteSparseConfig_static )
