@@ -8,7 +8,7 @@
 # See the section below, "help with building this Example ..." for how to tell
 # this Example library where to find SuiteSparse.
 
-cmake_minimum_required ( VERSION 3.20 )
+cmake_minimum_required ( VERSION 3.22 )
 
 #-------------------------------------------------------------------------------
 # help with building this Example package and finding SuiteSparse 
@@ -18,7 +18,7 @@ cmake_minimum_required ( VERSION 3.20 )
 # CMAKE_PREFIX_PATH if the SuiteSparse libraries aren't installed at a default
 # location.  For example, on Linux or Mac, if you have your own a compiled copy
 # of SuiteSparse in /home/me/SuiteSparse that was compiled and installed with
-# LOCAL_INSTALL set to ON, use the following:
+# SUITESPARSE_LOCAL_INSTALL set to ON, use the following:
 #
 #   export CMAKE_PREFIX_PATH /home/me/SuiteSparse
 #
@@ -28,7 +28,7 @@ cmake_minimum_required ( VERSION 3.20 )
 #   set ( CMAKE_PREFIX_PATH /opt/SuiteSparse )
 #
 # The following is added, just to simplify building this Example if it is
-# located inside SuiteSparse itself and compiled with LOCAL_INSTALL set to ON.
+# located inside SuiteSparse itself and compiled with SUITESPARSE_LOCAL_INSTALL set to ON.
 # Normally you would not use this in a stand-alone library that relies on
 # SuiteSparse:
 
@@ -67,16 +67,9 @@ message ( STATUS "Building MY library version: v"
 # policies
 #-------------------------------------------------------------------------------
 
-cmake_policy ( SET CMP0042 NEW )    # enable MACOSX_RPATH by default
-cmake_policy ( SET CMP0048 NEW )    # VERSION variable policy
-cmake_policy ( SET CMP0054 NEW )    # if ( expression ) handling policy
-cmake_policy ( SET CMP0104 NEW )    # initialize CUDA architectures
-
 if ( WIN32 )
     set ( CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS true )
 endif ( )
-
-set ( CMAKE_MACOSX_RPATH TRUE )
 
 option ( BUILD_SHARED_LIBS "OFF: do not build shared libraries.  ON (default): build shared libraries" ON )
 option ( BUILD_STATIC_LIBS "OFF: do not build static libraries.  ON (default): build static libraries" ON )
@@ -107,7 +100,7 @@ find_package ( KLU 2.3.0 REQUIRED )
 find_package ( KLU_CHOLMOD 2.3.0 REQUIRED )
 find_package ( LDL 3.3.0 REQUIRED )
 find_package ( LAGraph 1.1.0 )
-find_package ( Mongoose 3.3.0 REQUIRED )
+find_package ( SuiteSparse_Mongoose 3.3.0 REQUIRED )
 find_package ( ParU 0.1.0 REQUIRED )
 find_package ( RBio 4.3.0 REQUIRED )
 find_package ( SPEX 2.3.0 REQUIRED )    # requires GMP and MPFR

@@ -41,35 +41,59 @@ set ( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 include ( SuiteSparsePolicy )
 
 #-------------------------------------------------------------------------------
-# find library dependencies
+# find languages
 #-------------------------------------------------------------------------------
 
 enable_language ( CXX )
 
-if ( DEMO )
+if ( SUITESPARSE_DEMOS )
     enable_language ( C )
 endif ( )
 
-option ( NOPENMP "ON: do not use OpenMP.  OFF (default): use OpenMP" OFF )
-if ( NOPENMP )
-    # OpenMP has been disabled
-    set ( OpenMP_CXX_FOUND OFF )
-    set ( OpenMP_C_FOUND OFF )
-else ( )
+#-------------------------------------------------------------------------------
+# find OpenMP
+#-------------------------------------------------------------------------------
+
+option ( PARU_USE_OPENMP "ON: Use OpenMP in ParU if available.  OFF: Do not use OpenMP.  (Default: SUITESPARSE_USE_OPENMP)" ${SUITESPARSE_USE_OPENMP} )
+if ( NOT SUITESPARSE_USE_OPENMP )
+    set ( PARU_USE_OPENMP "OFF" CACHE STRING "" FORCE )
+endif ( )
+
+if ( PARU_USE_OPENMP )
     # OpenMP 4.5 or later is required
-    find_package ( OpenMP )
-    if ( OpenMP_CXX_FOUND AND OpenMP_CXX_VERSION VERSION_LESS 4.5 )
-        set ( NOPENMP ON )
-    endif ( )
-    if ( OpenMP_C_FOUND AND OpenMP_C_VERSION VERSION_LESS 4.5 )
-        set ( NOPENMP ON )
-    endif ( )
-    if ( NOPENMP )
-        message ( STATUS "Version of OpenMP is too old." )
+    find_package ( OpenMP GLOBAL )
+    if ( OpenMP_CXX_FOUND AND OpenMP_C_FOUND )
+        set ( PARU_HAS_OPENMP ON )
+        if (( OpenMP_CXX_VERSION VERSION_LESS 4.5 ) OR
+            ( OpenMP_C_VERSION   VERSION_LESS 4.5 ) )
+            message ( STATUS "ParU requires OpenMP 4.5 or later" )
+            set ( PARU_HAS_OPENMP OFF )
+            set ( OpenMP_CXX_FOUND OFF )
+            set ( OpenMP_C_FOUND OFF )
+        endif ( )
+    else ( )
+        # OpenMP has not been found
+        message ( STATUS "OpenMP not found" )
+        set ( PARU_HAS_OPENMP OFF )
         set ( OpenMP_CXX_FOUND OFF )
         set ( OpenMP_C_FOUND OFF )
     endif ( )
+else ( )
+    # OpenMP has not been requested
+    set ( PARU_HAS_OPENMP OFF )
+    set ( OpenMP_CXX_FOUND OFF )
+    set ( OpenMP_C_FOUND OFF )
 endif ( )
+message ( STATUS "ParU has OpenMP: ${PARU_HAS_OPENMP}" )
+
+# check for strict usage
+if ( SUITESPARSE_USE_STRICT AND PARU_USE_OPENMP AND NOT PARU_HAS_OPENMP )
+    message ( FATAL_ERROR "OpenMP 4.5 required for ParU but not found" )
+endif ( )
+
+#-------------------------------------------------------------------------------
+# find other dependencies
+#-------------------------------------------------------------------------------
 
 if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
     find_package ( SuiteSparse_config 7.4.0
@@ -228,7 +252,7 @@ if ( BUILD_STATIC_LIBS )
 endif ( )
 
 # OpenMP:
-if ( OpenMP_CXX_FOUND )
+if ( PARU_HAS_OPENMP )
     message ( STATUS "OpenMP C++ libraries:    ${OpenMP_CXX_LIBRARIES} ")
     message ( STATUS "OpenMP C++ include:      ${OpenMP_CXX_INCLUDE_DIRS} ")
     message ( STATUS "OpenMP C++ flags:        ${OpenMP_CXX_FLAGS} ")
@@ -389,7 +413,7 @@ endif ( )
 # Demo library and programs
 #-------------------------------------------------------------------------------
 
-if ( DEMO )
+if ( SUITESPARSE_DEMOS )
 
     #---------------------------------------------------------------------------
     # demo library
@@ -401,7 +425,7 @@ if ( DEMO )
     # Demo programs
     #---------------------------------------------------------------------------
 
-    if ( OpenMP_CXX_FOUND )
+    if ( PARU_HAS_OPENMP )
         add_executable ( paru_demo "Demo/paru_demo.cpp" )
         if ( BUILD_SHARED_LIBS )
             target_link_libraries ( paru_demo PUBLIC ParU )
@@ -410,9 +434,7 @@ if ( DEMO )
         endif ( )
         target_link_libraries ( paru_demo
             PUBLIC SuiteSparse::CHOLMOD SuiteSparse::UMFPACK OpenMP::OpenMP_CXX )
-    endif ( )
 
-    if ( OpenMP_C_FOUND )
         add_executable ( paru_democ "Demo/paru_democ.c" )
         if ( BUILD_SHARED_LIBS )
             target_link_libraries ( paru_democ PUBLIC ParU )

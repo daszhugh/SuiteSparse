@@ -24,8 +24,8 @@ int main(int argn, char **argv)
 // various sizes.  This is the demo for this 'dense' usage case.
 // The 'sparse' case is exercised by SuiteSparseQR.
 
-#ifndef SUITESPARSE_CUDA
-#define SUITESPARSE_CUDA
+#ifndef SPQR_HAS_CUDA
+#define SPQR_HAS_CUDA
 #endif
 
 #include "GPUQREngine_SuiteSparse.hpp"
@@ -309,10 +309,10 @@ int main(int argn, char **argv)
     // warmup the GPU.  This can take some time, but only needs
     // to be done once
     cc->useGPU = true ;
-    t = SuiteSparse_time ( ) ;
+    t = SUITESPARSE_TIME ;
     cholmod_l_gpu_memorysize (&total_mem, &available_mem, cc) ;
     cc->gpuMemorySize = available_mem ;
-    t = SuiteSparse_time ( ) - t ;
+    t = SUITESPARSE_TIME - t ;
     if (cc->gpuMemorySize <= 1)
     {
         printf ("no GPU available\n") ;

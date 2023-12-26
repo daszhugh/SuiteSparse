@@ -86,8 +86,8 @@ jobs:
                   -DBLA_VENDOR="OpenBLAS" \
                   -DNSTATIC=ON \
                   -DCOMPACT=ON \
-                  -DENABLE_CUDA=ON \
-                  -DCUDAToolkit_INCLUDE_DIR="/usr/include" \
+                  -DSUITESPARSE_USE_CUDA=ON \
+                  -DCUDAToolkit_INCLUDE_DIRS="/usr/include" \
                   ..
             echo "::endgroup::"
             echo "::group::Build $lib"

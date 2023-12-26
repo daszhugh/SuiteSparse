@@ -32,15 +32,15 @@ library:
 
 # install only in SuiteSparse/lib and SuiteSparse/include
 local:
-	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DLOCAL_INSTALL=1 .. && cmake --build . --config Release -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DSUITESPARSE_LOCAL_INSTALL=1 .. && cmake --build . --config Release -j${JOBS} )
 
 # install only in /usr/local (default)
 global:
-	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DLOCAL_INSTALL=0 .. && cmake --build . --config Release -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DSUITESPARSE_LOCAL_INSTALL=0 .. && cmake --build . --config Release -j${JOBS} )
 
 # enable CUDA (NOTE: not ready for production use)
 cuda:
-	( cd build && cmake $(CMAKE_OPTIONS) -DENABLE_CUDA=1 .. && cmake --build . --config Release -j$(JOBS) )
+	( cd build && cmake $(CMAKE_OPTIONS) -DGRAPHBLAS_USE_CUDA=1 .. && cmake --build . --config Release -j$(JOBS) )
 
 # compile with -g 
 debug:
@@ -48,15 +48,15 @@ debug:
 
 # compile without FactoryKernels
 compact:
-	( cd build && cmake $(CMAKE_OPTIONS) -DCOMPACT=1 .. && cmake --build . --config Release -j$(JOBS) )
+	( cd build && cmake $(CMAKE_OPTIONS) -DGRAPHBLAS_COMPACT=1 .. && cmake --build . --config Release -j$(JOBS) )
 
 # compile with -g, and without FactoryKernels
 cdebug:
-	( cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DCOMPACT=1 $(CMAKE_OPTIONS) .. && cmake --build . --config Debug -j$(JOBS) )
+	( cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DGRAPHBLAS_COMPACT=1 $(CMAKE_OPTIONS) .. && cmake --build . --config Debug -j$(JOBS) )
 
 # build the dynamic library and the demos
 all:
-	( cd build && cmake $(CMAKE_OPTIONS) -DDEMO=1 .. && cmake --build . --config Release -j$(JOBS) )
+	( cd build && cmake $(CMAKE_OPTIONS) -DSUITESPARSE_DEMOS=1 .. && cmake --build . --config Release -j$(JOBS) )
 
 # run the demos
 demos: all
