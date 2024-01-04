@@ -286,7 +286,7 @@ endif ( )
 # Coverage and Unit Testing Setup
 include ( CTest )
 
-if ( BUILD_TESTING )
+if ( BUILD_TESTING AND BUILD_STATIC_LIBS )
     set ( TESTING_OUTPUT_PATH ${PROJECT_BINARY_DIR}/tests )
 
     if ( Python_Interpreter_FOUND )
