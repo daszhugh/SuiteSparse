@@ -11,10 +11,10 @@
 
 cmake_minimum_required ( VERSION 3.22 )
 
-set ( CXSPARSE_DATE "Dec 30, 2023" )
+set ( CXSPARSE_DATE "Jan XX, 2024" )
 set ( CXSPARSE_VERSION_MAJOR 4 CACHE STRING "" FORCE )
 set ( CXSPARSE_VERSION_MINOR 3 CACHE STRING "" FORCE )
-set ( CXSPARSE_VERSION_SUB   0 CACHE STRING "" FORCE )
+set ( CXSPARSE_VERSION_SUB   1 CACHE STRING "" FORCE )
 
 message ( STATUS "Building CXSparse version: v"
     ${CXSPARSE_VERSION_MAJOR}.
@@ -25,7 +25,7 @@ message ( STATUS "Building CXSparse version: v"
 # define the project
 #-------------------------------------------------------------------------------
 
-project ( cxsparse
+project ( CXSparse
     VERSION "${CXSPARSE_VERSION_MAJOR}.${CXSPARSE_VERSION_MINOR}.${CXSPARSE_VERSION_SUB}"
     LANGUAGES C )
 
@@ -70,10 +70,10 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    find_package ( SuiteSparse_config 7.4.0
+    find_package ( SuiteSparse_config 7.5.0
         PATHS ${CMAKE_SOURCE_DIR}/../SuiteSparse_config/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::SuiteSparseConfig )
-        find_package ( SuiteSparse_config 7.4.0 REQUIRED )
+        find_package ( SuiteSparse_config 7.5.0 REQUIRED )
     endif ( )
 endif ( )
 
@@ -394,6 +394,4 @@ endif ( )
 # report status
 #-------------------------------------------------------------------------------
 
-if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    include ( SuiteSparseReport )
-endif ( )
+include ( SuiteSparseReport )

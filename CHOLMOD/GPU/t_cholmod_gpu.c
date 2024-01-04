@@ -158,7 +158,7 @@ int TEMPLATE2 (CHOLMOD (gpu_init))
                                    k*Common->devBuffSize);
     }
 
-    return (1);  /* initialization successfull, useGPU = 1 */
+    return (1);  /* initialization successful, useGPU = 1 */
 
 }
 

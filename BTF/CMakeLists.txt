@@ -12,10 +12,10 @@
 
 cmake_minimum_required ( VERSION 3.22 )
 
-set ( BTF_DATE "Dec 30, 2023" )
+set ( BTF_DATE "Jan XX, 2024" )     # FIXME for 7.5.0
 set ( BTF_VERSION_MAJOR 2 CACHE STRING "" FORCE )
 set ( BTF_VERSION_MINOR 3 CACHE STRING "" FORCE )
-set ( BTF_VERSION_SUB   0 CACHE STRING "" FORCE )
+set ( BTF_VERSION_SUB   1 CACHE STRING "" FORCE )
 
 message ( STATUS "Building BTF version: v"
     ${BTF_VERSION_MAJOR}.
@@ -26,7 +26,7 @@ message ( STATUS "Building BTF version: v"
 # define the project
 #-------------------------------------------------------------------------------
 
-project ( btf
+project ( BTF
     VERSION "${BTF_VERSION_MAJOR}.${BTF_VERSION_MINOR}.${BTF_VERSION_SUB}"
     LANGUAGES C )
 
@@ -44,10 +44,10 @@ include ( SuiteSparsePolicy )
 #-------------------------------------------------------------------------------
 
 if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    find_package ( SuiteSparse_config 7.4.0
+    find_package ( SuiteSparse_config 7.5.0
         PATHS ${CMAKE_SOURCE_DIR}/../SuiteSparse_config/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::SuiteSparseConfig )
-        find_package ( SuiteSparse_config 7.4.0 REQUIRED )
+        find_package ( SuiteSparse_config 7.5.0 REQUIRED )
     endif ( )
 endif ( )
 
@@ -239,6 +239,4 @@ endif ( )
 # report status
 #-------------------------------------------------------------------------------
 
-if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    include ( SuiteSparseReport )
-endif ( )
+include ( SuiteSparseReport )
