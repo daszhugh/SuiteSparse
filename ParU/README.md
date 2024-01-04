@@ -1,25 +1,42 @@
 # SuiteSparse:ParU
 
-ParU, Copyright (c) 2022, Mohsen Aznaveh and Timothy A. Davis,
+ParU, Copyright (c) 2022-2023, Mohsen Aznaveh and Timothy A. Davis,
 All Rights Reserved.
 SPDX-License-Identifier: GNU GPL 3.0
 
 --------------------------------------------------------------------------------
 
+## NOTE: This is a pre-release of ParU, not yet version 1.0.
+
+There are several FIXME's and TODO's in the code we need to resolv for the
+final version, and the API may change in the final stable v1.0 version.
+
+Stay tuned.
+
 ## Introduction
 
-ParU: is a set of routings for solving sparse linear system via parallel
-multifrontal LU factorization algorithms.  Requires OpenMP 4.0+, BLAS, CHOLMOD,
-UMFPACK, AMD, COLAMD, CAMD, CCOLAMD, and METIS.
+ParU is a set of routines for solving sparse linear system via parallel
+multifrontal LU factorization algorithms.  Requires OpenMP 4.5+, BLAS, CHOLMOD,
+UMFPACK, AMD, COLAMD, CAMD, CCOLAMD, and METIS (in particular, the
+`CHOLMOD/SuiteSparse_metis` variant; see the CHOLMOD documentation for
+details).
 
 ##  How to install
 
-You should first install all dependencies for ParU which is UMFPACK and all its 
-dependencies (AMD, CHOLMOD, ...). By default ParU also needs metis. The 
-configuration of ParU is mostly done via SuiteSparse config file (BLAS library,
-OpenMP settings and ...) which is in SuiteSparse/SuiteSparse_config.
-All SuiteSparse dependencies should be in the same directory as in ParU.
-After that simply call make.
+See the SuiteSparse/README.md for instructions on building all of SuiteSparse
+via the SuiteSparse/CMakeLists.txt file.  You may also build each individual
+package that ParU depends on (`SuiteSparse_config`, AMD, COLAMD, CCAMD,
+CCOLAMD, CHOLMOD, and UMFPACK).  Then simply do:
+
+```
+    cd ParU/build
+    cmake ..
+    cmake --build . --config Release
+    sudo cmake --install .
+```
+
+Alternatively, on Linux, Mac, or MINGW, simply type `make` in the ParU
+folder, then `sudo make install`.
 
 ##  How to use
 
@@ -39,7 +56,7 @@ See Demo for more examples.
 
 --------------------------------------------------------------------------------
 ## License
-Copyright (C) 2022 Mohsen Aznaveh and Timothy A. Davis
+Copyright (C) 2022-2023 Mohsen Aznaveh and Timothy A. Davis
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License as published by the Free Software

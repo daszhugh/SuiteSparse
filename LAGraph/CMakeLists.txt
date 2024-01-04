@@ -36,23 +36,24 @@
 # get the version
 #-------------------------------------------------------------------------------
 
-cmake_minimum_required ( VERSION 3.13 )
-
-cmake_policy ( SET CMP0042 NEW )
-cmake_policy ( SET CMP0048 NEW )
-set ( CMAKE_MACOSX_RPATH TRUE )
+cmake_minimum_required ( VERSION 3.20 ) # LAGraph can be built stand-alone
 
 # version of LAGraph
-set ( LAGraph_DATE "Aug 2, 2023" )
+set ( LAGraph_DATE "Jan XX, 2024" )     # FIXME for 7.5.0
 set ( LAGraph_VERSION_MAJOR 1 CACHE STRING "" FORCE )
-set ( LAGraph_VERSION_MINOR 0 CACHE STRING "" FORCE )
-set ( LAGraph_VERSION_SUB   2 CACHE STRING "" FORCE )
+set ( LAGraph_VERSION_MINOR 1 CACHE STRING "" FORCE )
+set ( LAGraph_VERSION_SUB   1 CACHE STRING "" FORCE )
+
+message ( STATUS "Building LAGraph version: v"
+    ${LAGraph_VERSION_MAJOR}.
+    ${LAGraph_VERSION_MINOR}.
+    ${LAGraph_VERSION_SUB} " (" ${LAGraph_DATE} ")" )
 
 #-------------------------------------------------------------------------------
 # define the project
 #-------------------------------------------------------------------------------
 
-project ( lagraph
+project ( LAGraph
           VERSION "${LAGraph_VERSION_MAJOR}.${LAGraph_VERSION_MINOR}.${LAGraph_VERSION_SUB}" )
 
 #-------------------------------------------------------------------------------
@@ -69,13 +70,14 @@ include ( SuiteSparsePolicy )
 
 enable_language ( C )
 
-option ( NOPENMP "ON: do not use OpenMP.  OFF (default): use OpenMP" OFF )
-
 # configure LAGraph.h with the LAGraph date and version
 configure_file (
     "config/LAGraph.h.in"
     "${PROJECT_SOURCE_DIR}/include/LAGraph.h"
     NEWLINE_STYLE LF )
+
+include ( CheckSymbolExists )
+check_symbol_exists ( fmax "math.h" NO_LIBM )
 
 #-------------------------------------------------------------------------------
 # code coverage and build type
@@ -125,7 +127,11 @@ endif ( )
 
 if ( SUITESPARSE_ROOT_CMAKELISTS )
 
-    add_library ( GraphBLAS::GraphBLAS ALIAS GraphBLAS )
+    if ( TARGET GraphBLAS )
+        add_library ( GraphBLAS::GraphBLAS ALIAS GraphBLAS )
+    else ( )
+        add_library ( GraphBLAS::GraphBLAS ALIAS GraphBLAS_static )
+    endif ( )
     if ( TARGET GraphBLAS_static )
         add_library ( GraphBLAS::GraphBLAS_static ALIAS GraphBLAS_static )
     endif ( )
@@ -139,10 +145,15 @@ else ( )
     # or uncomment the next line:
     # set ( ENV{GRAPHBLAS_ROOT} ${PROJECT_SOURCE_DIR}/../GraphBLAS )
 
-    message ( STATUS "GraphBLAS_ROOT: ${GraphBLAS_ROOT} $ENV{GraphBLAS_ROOT}" )
-    message ( STATUS "GRAPHBLAS_ROOT: ${GRAPHBLAS_ROOT} $ENV{GRAPHBLAS_ROOT}" )
+    # The ../GraphBLAS folder is considered by default, if it exists.
 
-    find_package ( GraphBLAS 8.2.1 MODULE REQUIRED )
+#   message ( STATUS "GraphBLAS_ROOT: ${GraphBLAS_ROOT} $ENV{GraphBLAS_ROOT}" )
+#   message ( STATUS "GRAPHBLAS_ROOT: ${GRAPHBLAS_ROOT} $ENV{GRAPHBLAS_ROOT}" )
+
+    # No package version is explicitly stated here; an arbitrary GraphBLAS
+    # library can have any version number.  For SuiteSparse:GraphBLAS, LAGraph
+    # requires v7.1.0 or later, which is checked in LAGraph.h.
+    find_package ( GraphBLAS MODULE REQUIRED )
 
 endif ( )
 
@@ -150,18 +161,39 @@ endif ( )
 # determine what user threading model to use
 #-------------------------------------------------------------------------------
 
+option ( LAGRAPH_USE_OPENMP "ON: Use OpenMP in LAGraph if available.  OFF: Do not use OpenMP.  (Default: SUITESPARSE_USE_OPENMP)" ${SUITESPARSE_USE_OPENMP} )
+if ( NOT SUITESPARSE_USE_OPENMP )
+    set ( LAGRAPH_USE_OPENMP "OFF" CACHE STRING "" FORCE )
+endif ( )
 if ( COVERAGE )
+    set ( LAGRAPH_USE_OPENMP "OFF" CACHE STRING "" FORCE ) # OK: test coverage is enabled
     message ( STATUS "OpenMP disabled for test coverage" )
 else ( )
-    if ( NOPENMP )
-        set ( OPENMP_C_FOUND OFF )
-    else ( )
-        find_package ( OpenMP )
-        if ( OPENMP_C_FOUND AND NOT NSTATIC )
+    if ( LAGRAPH_USE_OPENMP )
+        if ( CMAKE_VERSION VERSION_LESS 3.24 )
+            find_package ( OpenMP COMPONENTS C )
+        else ( )
+            find_package ( OpenMP COMPONENTS C GLOBAL )
+        endif ( )
+        if ( OpenMP_C_FOUND AND BUILD_STATIC_LIBS )
             list ( APPEND LAGRAPH_STATIC_LIBS ${OpenMP_C_LIBRARIES} )
         endif ( )
         find_package ( Threads )
+    else ( )
+        set ( OpenMP_C_FOUND OFF )
     endif ( )
+endif ( )
+
+if ( OpenMP_C_FOUND )
+    set ( LAGRAPH_HAS_OPENMP ON )
+else ( )
+    set ( LAGRAPH_HAS_OPENMP OFF )
+endif ( )
+message ( STATUS "LAGraph has OpenMP: ${LAGRAPH_HAS_OPENMP}" )
+
+# check for strict usage
+if ( SUITESPARSE_USE_STRICT AND LAGRAPH_USE_OPENMP AND NOT LAGRAPH_HAS_OPENMP )
+    message ( FATAL_ERROR "OpenMP required for LAGraph but not found" )
 endif ( )
 
 #-------------------------------------------------------------------------------
@@ -191,7 +223,6 @@ message ( STATUS "CMAKE have OpenMP:         " ${OPENMP_C_FOUND} )
 include_directories ( ${PROJECT_SOURCE_DIR}/include
                       ${PROJECT_SOURCE_DIR}/src/utility
                       ${PROJECT_SOURCE_DIR}/test/include )
-include_directories ( "/usr/local/include" )
 
 # tell LAGraph where to find its own source (for LAGraph/data files)
 set ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DLGDIR=${PROJECT_SOURCE_DIR}" )
@@ -259,7 +290,7 @@ message ( STATUS "CMAKE C flags: " ${CMAKE_C_FLAGS} )
 # enable testing and add subdirectories
 #-------------------------------------------------------------------------------
 
-enable_testing ( )
+include ( CTest )
 
 add_subdirectory ( src )
 add_subdirectory ( experimental )
@@ -273,14 +304,16 @@ endif ( )
 
 include ( CMakePackageConfigHelpers )
 
-install ( TARGETS LAGraph LAGraphX
-    EXPORT LAGraphTargets
-    LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
-    ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
-    RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
-    PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
+if ( BUILD_SHARED_LIBS )
+    install ( TARGETS LAGraph LAGraphX
+        EXPORT LAGraphTargets
+        LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
+        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
+        RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
+endif ( )
 
-if ( NOT NSTATIC )
+if ( BUILD_STATIC_LIBS )
     install ( TARGETS LAGraph_static LAGraphX_static
         EXPORT LAGraphTargets
         ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
@@ -327,11 +360,10 @@ install ( FILES
 #-------------------------------------------------------------------------------
 
 if ( NOT MSVC )
-    if ( NOT NSTATIC )
-        if ( NOT WIN32 )
+    if ( BUILD_STATIC_LIBS )
+        if ( NOT NO_LIBM )
             list ( APPEND LAGRAPH_STATIC_LIBS "m" )
         endif ( )
-        list ( APPEND LAGRAPH_STATIC_LIBS ${GRAPHBLAS_LIBRARY} )
     endif ( )
     # This might be something like:
     #   /usr/lib/libgomp.so;/usr/lib/libpthread.a;m
@@ -359,6 +391,9 @@ if ( NOT MSVC )
             endif ( )
         endforeach ( )
     endforeach ( )
+    if ( BUILD_STATIC_LIBS )
+        set ( LAGRAPH_STATIC_LIBS "-l$<TARGET_FILE_BASE_NAME:GraphBLAS::GraphBLAS> ${LAGRAPH_STATIC_LIBS}" )
+    endif ( )
 
     set ( prefix "${CMAKE_INSTALL_PREFIX}" )
     set ( exec_prefix "\${prefix}" )
@@ -374,10 +409,19 @@ if ( NOT MSVC )
     else ( )
         set ( includedir "\${prefix}/${SUITESPARSE_INCLUDEDIR}")
     endif ( )
+    if ( BUILD_SHARED_LIBS )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:LAGraph> )
+    else ( )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:LAGraph_static> )
+    endif ( )
     configure_file (
         config/LAGraph.pc.in
-        LAGraph.pc
+        LAGraph.pc.out
         @ONLY
+        NEWLINE_STYLE LF )
+    file ( GENERATE
+        OUTPUT LAGraph.pc
+        INPUT ${CMAKE_CURRENT_BINARY_DIR}/LAGraph.pc.out
         NEWLINE_STYLE LF )
     install ( FILES
         ${CMAKE_CURRENT_BINARY_DIR}/LAGraph.pc

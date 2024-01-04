@@ -29,12 +29,6 @@
 
 @PACKAGE_INIT@
 
-set ( SUITESPARSE_GPURUNTIME_DATE "@SUITESPARSE_GPURUNTIME_DATE@" )
-set ( SUITESPARSE_GPURUNTIME_VERSION_MAJOR @SUITESPARSE_GPURUNTIME_VERSION_MAJOR@ )
-set ( SUITESPARSE_GPURUNTIME_VERSION_MINOR @SUITESPARSE_GPURUNTIME_VERSION_MINOR@ )
-set ( SUITESPARSE_GPURUNTIME_VERSION_PATCH @SUITESPARSE_GPURUNTIME_VERSION_SUB@ )
-set ( SUITESPARSE_GPURUNTIME_VERSION "@SUITESPARSE_GPURUNTIME_VERSION_MAJOR@.@SUITESPARSE_GPURUNTIME_VERSION_MINOR@.@SUITESPARSE_GPURUNTIME_VERSION_SUB@" )
-
 # Check for dependent targets
 include ( CMakeFindDependencyMacro )
 
@@ -68,6 +62,11 @@ include ( ${CMAKE_CURRENT_LIST_DIR}/SuiteSparse_GPURuntimeTargets.cmake )
 set ( _target_shared SuiteSparse::GPURuntime )
 set ( _target_static SuiteSparse::GPURuntime_static )
 set ( _var_prefix "SUITESPARSE_GPURUNTIME" )
+
+if ( NOT @BUILD_SHARED_LIBS@ AND NOT TARGET ${_target_shared} )
+    # make sure there is always an import target without suffix )
+    add_library ( ${_target_shared} ALIAS ${_target_static} )
+endif ( )
 
 get_target_property ( ${_var_prefix}_INCLUDE_DIR ${_target_shared} INTERFACE_INCLUDE_DIRECTORIES )
 if ( ${_var_prefix}_INCLUDE_DIR )
@@ -141,7 +140,8 @@ endmacro ( )
 suitesparse_check_exist ( SUITESPARSE_GPURUNTIME_INCLUDE_DIR ${SUITESPARSE_GPURUNTIME_INCLUDE_DIR} )
 suitesparse_check_exist ( SUITESPARSE_GPURUNTIME_LIBRARY ${SUITESPARSE_GPURUNTIME_LIBRARY} )
 
-message ( STATUS "SuiteSparse_GPURuntime version: ${SUITESPARSE_GPURUNTIME_VERSION}" )
+message ( STATUS "SuiteSparse_GPURuntime version: ${SPQR_VERSION}" )
 message ( STATUS "SuiteSparse_GPURuntime include: ${SUITESPARSE_GPURUNTIME_INCLUDE_DIR}" )
 message ( STATUS "SuiteSparse_GPURuntime library: ${SUITESPARSE_GPURUNTIME_LIBRARY}" )
 message ( STATUS "SuiteSparse_GPURuntime static:  ${SUITESPARSE_GPURUNTIME_STATIC}" )
+

@@ -178,9 +178,10 @@ void paru_update_rowDeg(int64_t panel_num, int64_t row_end, int64_t f,
                 //if (curCol < col2 && curCol >= col1) continue;
                 ASSERT(curCol >= col2 || curCol < col1); 
 
-                if (stl_colSet.find(curCol) == stl_colSet.end())
+                auto insertResult = stl_colSet.insert(curCol);
+                // inserted to stl_colSet => insert to stl_newColSet
+                if (insertResult.second)
                 {
-                    stl_colSet.insert(curCol);
                     stl_newColSet.insert(curCol);
                     colCount++;
                 }
@@ -273,9 +274,8 @@ void paru_update_rowDeg(int64_t panel_num, int64_t row_end, int64_t f,
     PR = 1;
 #endif
     PRLEVEL(1, ("%%Inside pivotal_elements\n"));
-    for (int64_t i = 0; i < (int64_t)pivotal_elements.size(); i++)
+    for (int64_t e : pivotal_elements)
     {
-        int64_t e = pivotal_elements[i];
         paru_element *el = elementList[e];
         //Found this in coverage test
         //It seems that I keep pivotal_elements really clean before this

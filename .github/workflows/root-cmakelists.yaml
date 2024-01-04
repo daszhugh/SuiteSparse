@@ -7,9 +7,14 @@ on:
   push:
     branches-ignore:
       - '**/dev2'
+      - '**/*dev2'
   pull_request:
 
 concurrency: ci-root-cmakelists-${{ github.ref }}
+
+env:
+  # string with name of libraries that are installed
+  INSTALLED_LIBS: "SuiteSparse_config:Mongoose:AMD:BTF:CAMD:CCOLAMD:COLAMD:CHOLMOD:CXSparse:LDL:KLU:UMFPACK:ParU:RBio:SPQR:SPEX:GraphBLAS:LAGraph"
 
 jobs:
 
@@ -18,7 +23,7 @@ jobs:
     # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
     runs-on: ubuntu-latest
 
-    name: ubuntu (${{ matrix.compiler }} ${{ matrix.cuda }} CUDA)
+    name: ubuntu (${{ matrix.compiler }} ${{ matrix.cuda }} CUDA, ${{ matrix.link }})
 
     strategy:
       # Allow other runners in the matrix to continue if some fail
@@ -27,6 +32,7 @@ jobs:
       matrix:
         compiler: [gcc, clang]
         cuda: [with, without]
+        link: [both]
         include:
           - compiler: gcc
             compiler-pkgs: "g++ gcc"
@@ -44,15 +50,35 @@ jobs:
           - cuda: with
             cuda-pkgs: "nvidia-cuda-dev nvidia-cuda-toolkit"
             cuda-cmake-flags:
-              -DENABLE_CUDA=ON
-              -DCUDAToolkit_INCLUDE_DIR="/usr/include"
+              -DSUITESPARSE_USE_CUDA=ON
+              -DSUITESPARSE_USE_STRICT=ON
+              -DCUDAToolkit_INCLUDE_DIRS="/usr/include"
               -DCMAKE_CUDA_COMPILER_LAUNCHER="ccache"
+          - compiler: gcc
+            compiler-pkgs: "g++ gcc"
+            cc: "gcc"
+            cxx: "g++"
+            ccache-max: 600M
+            cuda: with
+            cuda-pkgs: "nvidia-cuda-dev nvidia-cuda-toolkit"
+            cuda-cmake-flags:
+              -DSUITESPARSE_USE_CUDA=ON
+              -DSUITESPARSE_USE_STRICT=ON
+              -DCUDAToolkit_INCLUDE_DIRS="/usr/include"
+              -DCMAKE_CUDA_COMPILER_LAUNCHER="ccache"
+            link: static
+            link-cmake-flags:
+              -DBUILD_SHARED_LIBS=OFF
+              -DBUILD_STATIC_LIBS=ON
 
     env:
       CC: ${{ matrix.cc }}
       CXX: ${{ matrix.cxx }}
 
     steps:
+      - name: get CPU information
+        run: lscpu
+
       - name: checkout repository
         uses: actions/checkout@v3
 
@@ -71,7 +97,7 @@ jobs:
         # used in action/cache/restore and action/cache/save steps
         id: ccache-prepare
         run: |
-          echo "key=ccache:ubuntu:root:${{ matrix.compiler }}:${{ matrix.cuda }}:${{ github.ref }}:$(date +"%Y-%m-%d_%H-%M-%S"):${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "key=ccache:ubuntu:root:${{ matrix.compiler }}:${{ matrix.cuda }}:${{ matrix.link }}:${{ github.ref }}:$(date +"%Y-%m-%d_%H-%M-%S"):${{ github.sha }}" >> $GITHUB_OUTPUT
 
       - name: restore ccache
         # setup the GitHub cache used to maintain the ccache from one job to the next
@@ -81,8 +107,8 @@ jobs:
           key: ${{ steps.ccache-prepare.outputs.key }}
           # Prefer caches from the same branch. Fall back to caches from the dev branch.
           restore-keys: |
-            ccache:ubuntu:root:${{ matrix.compiler }}:${{ matrix.cuda }}:${{ github.ref }}
-            ccache:ubuntu:root:${{ matrix.compiler }}:${{ matrix.cuda }}
+            ccache:ubuntu:root:${{ matrix.compiler }}:${{ matrix.cuda }}:${{ matrix.link }}:${{ github.ref }}
+            ccache:ubuntu:root:${{ matrix.compiler }}:${{ matrix.cuda }}:${{ matrix.link }}
 
       - name: create empty libraries
         # This is to work around a bug in nvlink.
@@ -118,7 +144,10 @@ jobs:
                 -DCMAKE_CXX_COMPILER_LAUNCHER="ccache" \
                 -DCMAKE_Fortran_COMPILER_LAUNCHER="ccache" \
                 -DBLA_VENDOR="OpenBLAS" \
+                -DSUITESPARSE_DEMOS=OFF \
+                -DBUILD_TESTING=OFF \
                 ${{ matrix.cuda-cmake-flags }} \
+                ${{ matrix.link-cmake-flags }} \
                 ..
 
       - name: build libraries
@@ -130,7 +159,7 @@ jobs:
         run: |
           printf "::group::   \033[0;32m==>\033[0m Configuring for demos\n"
           cd ${GITHUB_WORKSPACE}/build
-          cmake -DDEMO=ON ..
+          cmake -DSUITESPARSE_DEMOS=ON -DBUILD_TESTING=ON ..
           echo "::endgroup::"
           printf "::group::   \033[0;32m==>\033[0m Building demos\n"
           cd ${GITHUB_WORKSPACE}/build
@@ -161,7 +190,7 @@ jobs:
           cd ${GITHUB_WORKSPACE}/build
           cmake --install .
 
-      - name: build example
+      - name: build example using CMake
         run: |
           cd ${GITHUB_WORKSPACE}/Example/build
           printf "::group::\033[0;32m==>\033[0m Configuring example\n"
@@ -169,21 +198,74 @@ jobs:
             -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/lib/cmake" \
             -DBLA_VENDOR="OpenBLAS" \
             ${{ matrix.cuda-cmake-flags }} \
+            ${{ matrix.link-cmake-flags }} \
             ..
           echo "::endgroup::"
           printf "::group::\033[0;32m==>\033[0m Building example\n"
           cmake --build .
           echo "::endgroup::"
           printf "::group::\033[0;32m==>\033[0m Executing example\n"
-          printf "\033[1;35m  C binary with shared libraries\033[0m\n"
-          LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/lib ./my_demo
-          printf "\033[1;35m  C++ binary with shared libraries\033[0m\n"
-          LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/lib ./my_cxx_demo
+          if [ -f ./my_demo -a -f ./my_cxx_demo ]; then
+            printf "\033[1;35m  C binary with shared libraries\033[0m\n"
+            LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/lib ./my_demo
+            printf "\033[1;35m  C++ binary with shared libraries\033[0m\n"
+            LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/lib ./my_cxx_demo
+          fi
           printf "\033[1;35m  C binary with statically linked libraries\033[0m\n"
           ./my_demo_static
           printf "\033[1;35m  C++ binary with statically linked libraries\033[0m\n"
           ./my_cxx_demo_static
           echo "::endgroup::"
+
+      - name: test Config
+        run: |
+          IFS=':' read -r -a libs <<< "${INSTALLED_LIBS}"
+          for lib in "${libs[@]}"; do
+            printf "::group::   \033[0;32m==>\033[0m Building Config.cmake with library \033[0;32m${lib}\033[0m\n"
+            cd ${GITHUB_WORKSPACE}/TestConfig/${lib}
+            cd build
+            cmake \
+              -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/lib/cmake" \
+              ..
+            cmake --build . --config Release
+            echo "::endgroup::"
+          done
+
+      - name: build example using autotools
+        run: |
+          cd ${GITHUB_WORKSPACE}/Example
+          printf "::group::\033[0;32m==>\033[0m Configuring example\n"
+          autoreconf -fi
+          mkdir build-autotools
+          cd build-autotools
+          if [ "${{ matrix.link }}" = static ]; then
+            _extra_config_flags="--enable-static --disable-shared"
+          else
+            _extra_config_flags="--enable-shared --disable-static"
+          fi
+          PKG_CONFIG_PATH=${GITHUB_WORKSPACE}/lib/pkgconfig/ \
+            ../configure ${_extra_config_flags}
+          echo "::endgroup::"
+          printf "::group::\033[0;32m==>\033[0m Building example\n"
+          make all
+          echo "::endgroup::"
+          printf "::group::\033[0;32m==>\033[0m Executing example\n"
+          printf "\033[1;35m  C binary\033[0m\n"
+          LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/lib ./my_demo
+          printf "\033[1;35m  C++ binary\033[0m\n"
+          LD_LIBRARY_PATH=${GITHUB_WORKSPACE}/lib ./my_cxx_demo
+          echo "::endgroup::"
+          IFS=':' read -r -a libs <<< "${INSTALLED_LIBS}"
+          for lib in "${libs[@]}"; do
+            printf "::group::   \033[0;32m==>\033[0m Building test with library \033[0;32m${lib}\033[0m\n"
+            cd ${GITHUB_WORKSPACE}/TestConfig/${lib}
+            autoreconf -fi
+            mkdir build-autotools && cd build-autotools
+            PKG_CONFIG_PATH=${GITHUB_WORKSPACE}/lib/pkgconfig/ \
+              ../configure ${_extra_config_flags}
+            make all
+            echo "::endgroup::"
+          done
 
 
   msvc:
@@ -191,7 +273,7 @@ jobs:
     # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners
     runs-on: windows-latest
 
-    name: msvc (${{ matrix.openmp }} OpenMP)
+    name: msvc (${{ matrix.openmp }} OpenMP ${{ matrix.cuda }} CUDA)
 
     defaults:
       run:
@@ -201,6 +283,18 @@ jobs:
     strategy:
       # Allow other runners in the matrix to continue if some fail
       fail-fast: false
+
+      matrix:
+        openmp: [with, without]
+        cuda: [without]
+        include:
+          - openmp: without
+            openmp-cmake-flags: "-DSUITESPARSE_USE_OPENMP=OFF"
+          - openmp: with
+            cuda: with
+            cuda-cmake-flags:
+              -DSUITESPARSE_USE_CUDA=ON
+              -DCMAKE_CUDA_COMPILER_LAUNCHER="ccache"
 
     env:
       CHERE_INVOKING: 1
@@ -256,6 +350,18 @@ jobs:
 
           msystem: UCRT64
 
+      - uses: Jimver/cuda-toolkit@v0.2.11
+        name: install CUDA toolkit
+        if: matrix.cuda == 'with'
+        id: cuda-toolkit
+        with:
+          cuda: '12.2.0'
+          #See https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html#install-the-cuda-software
+          method: 'local'
+          # Do not cache the installer (~3 GiB). It doesn't speed up the
+          # installation significantly. And we need the space for ccache.
+          use-github-cache: 'false'
+
       - name: setup build environment
         # get packages from MSYS2
         # Copy only relevant parts to avoid picking up headers and libraries
@@ -284,7 +390,7 @@ jobs:
         shell: msys2 {0}
         run: |
           echo "ccachedir=$(cygpath -m $(${CCACHE} -k cache_dir))" >> $GITHUB_OUTPUT
-          echo "key=ccache:msvc:root:${{ github.ref }}:$(date +"%Y-%m-%d_%H-%M-%S"):${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "key=ccache:msvc:root:${{ matrix.openmp }}:${{ matrix.cuda }}:${{ github.ref }}:$(date +"%Y-%m-%d_%H-%M-%S"):${{ github.sha }}" >> $GITHUB_OUTPUT
 
       - name: restore ccache
         # Setup the GitHub cache used to maintain the ccache from one job to the next
@@ -294,8 +400,8 @@ jobs:
           key: ${{ steps.ccache-prepare.outputs.key }}
           # Prefer caches from the same branch. Fall back to caches from the dev branch.
           restore-keys: |
-            ccache:msvc:root:${{ github.ref }}
-            ccache:msvc:root:
+            ccache:msvc:root:${{ matrix.openmp }}:${{ matrix.cuda }}:${{ github.ref }}
+            ccache:msvc:root:${{ matrix.openmp }}:${{ matrix.cuda }}:
 
       - name: configure ccache
         # Limit the maximum size and switch on compression to avoid exceeding the total disk or cache quota.
@@ -311,6 +417,11 @@ jobs:
 
       - name: configure
         run: |
+          declare -a _extra_config
+          if [ ${{ matrix.cuda }} = 'with' ]; then
+            _extra_config+=(-DCUDAToolkit_ROOT="$(cygpath -m "${{ steps.cuda-toolkit.outputs.CUDA_PATH }}")")
+            _extra_config+=(-DCMAKE_CUDA_COMPILER="$(cygpath -m "${{ steps.cuda-toolkit.outputs.CUDA_PATH }}")/bin/nvcc.exe")
+          fi
           mkdir -p ${GITHUB_WORKSPACE}/build && cd ${GITHUB_WORKSPACE}/build
           cmake -G"Ninja Multi-Config" \
                 -DCMAKE_BUILD_TYPE="Release" \
@@ -319,9 +430,14 @@ jobs:
                 -DCMAKE_C_COMPILER_LAUNCHER="ccache" \
                 -DCMAKE_CXX_COMPILER_LAUNCHER="ccache" \
                 -DCMAKE_Fortran_COMPILER_LAUNCHER="ccache" \
-                -DNFORTRAN=ON \
+                -DSUITESPARSE_USE_FORTRAN=OFF \
                 -DBLA_VENDOR="All" \
                 -DPython_EXECUTABLE="C:/msys64/ucrt64/bin/python.exe" \
+                -DSUITESPARSE_DEMOS=OFF \
+                -DBUILD_TESTING=OFF \
+                ${{ matrix.openmp-cmake-flags }} \
+                ${{ matrix.cuda-cmake-flags }} \
+                "${_extra_config[@]}" \
                 ..
 
       - name: build libraries
@@ -333,7 +449,7 @@ jobs:
         run: |
           printf "::group::   \033[0;32m==>\033[0m Configuring for demos\n"
           cd ${GITHUB_WORKSPACE}/build
-          cmake -DDEMO=ON ..
+          cmake -DSUITESPARSE_DEMOS=ON -DBUILD_TESTING=ON ..
           echo "::endgroup::"
           printf "::group::   \033[0;32m==>\033[0m Building demos\n"
           cd ${GITHUB_WORKSPACE}/build
@@ -395,3 +511,17 @@ jobs:
           PATH="${GITHUB_WORKSPACE}/bin;${GITHUB_WORKSPACE}/dependencies/bin;${PATH}" \
             ./Release/my_cxx_demo_static
           echo "::endgroup::"
+
+      - name: test Config
+        run: |
+          IFS=':' read -r -a libs <<< "${INSTALLED_LIBS}"
+          for lib in "${libs[@]}"; do
+            printf "::group::   \033[0;32m==>\033[0m Building with Config.cmake with library \033[0;32m${lib}\033[0m\n"
+            cd ${GITHUB_WORKSPACE}/TestConfig/${lib}
+            cd build
+            cmake \
+              -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/lib/cmake;C:/Miniconda/envs/test/Library;${GITHUB_WORKSPACE}/dependencies" \
+              ..
+            cmake --build . --config Release
+            echo "::endgroup::"
+          done

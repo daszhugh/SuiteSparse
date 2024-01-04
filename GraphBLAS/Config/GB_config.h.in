@@ -2,7 +2,7 @@
 // GraphBLAS/Config/GB_config.h: JIT configuration for GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2023, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2024, All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
 //------------------------------------------------------------------------------
@@ -39,7 +39,7 @@
 #define GB_LIB_SUFFIX   "@GB_LIB_SUFFIX@"
 #endif
 
-// GB_OBJ_SUFFIX: object suffix (.o for Linux/Unix/Mac, .obj for Windows):
+// GB_OBJ_SUFFIX: object suffix (.o for Linux/Unix/Mac/MinGW, .obj for MSVC):
 #ifndef GB_OBJ_SUFFIX
 #define GB_OBJ_SUFFIX   "@GB_OBJ_SUFFIX@"
 #endif

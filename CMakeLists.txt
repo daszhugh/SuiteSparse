@@ -2,12 +2,24 @@
 # SuiteSparse/CMakeLists.txt:  root CMake build rules
 #-------------------------------------------------------------------------------
 
-# Copyright (c) 2023, Timothy A. Davis.
-# All Rights Reserved.
+# Copyright (c) 2023-2024, Timothy A. Davis, All Rights Reserved.
+# Just this particular file is under the Apache-2.0 license; each package has
+# its own license.
+# SPDX-License-Identifier: Apache-2.0
 
-# The actually required minimum CMake version might be higher depending on the
-# selected SuiteSparse projects.
-cmake_minimum_required ( VERSION 3.20 )
+# This file and most packages in SuiteSparse require cmake 3.22 or later.  Some
+# packages can be built as stand-alone packages with their own CMakeLists.txt
+# files, with older versions of cmake (GraphBLAS, LAGraph, and CSparse):
+#
+#   GraphBLAS and LAGraph: 3.20
+#   CSparse: 3.13
+#   GraphBLAS jitifyer (for end user JIT kernels): 3.13
+#
+# Other CMakeLists.txt files inside SuiteSparse are from dependent packages
+# (LAGraph/deps/json_h, GraphBLAS/cpu_features, and CHOLMOD/SuiteSparse_metis
+# which is a slightly revised copy of METIS 5.0.1) but none of those
+# CMakeLists.txt files are used to build any package in SuiteSparse.
+cmake_minimum_required ( VERSION 3.22 )
 
 project ( "SuiteSparse" )
 
@@ -17,11 +29,6 @@ project ( "SuiteSparse" )
 
 set ( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
     ${PROJECT_SOURCE_DIR}/SuiteSparse_config/cmake_modules )
-
-option ( ENABLE_CUDA "Enable CUDA acceleration" ON )
-
-# SuiteSparsePolicy enables SUITESPARSE_CUDA if a CUDA compiler can be found.
-include ( SuiteSparsePolicy )
 
 #-------------------------------------------------------------------------------
 # build options
@@ -56,25 +63,28 @@ foreach ( proj ${SUITESPARSE_ENABLE_PROJECTS} )
 endforeach ( )
 
 # CHOLMOD options affecting dependencies
-option ( NCAMD "ON: do not use CAMD/CCOLAMD.  OFF (default): use CAMD/CCOLAMD" OFF )
+option ( CHOLMOD_CAMD "ON (default): use CAMD/CCOLAMD.  OFF: do not use CAMD/CCOLAMD" ON )
 
-# KLU and UMFPACK options affecting dependencies
-option ( NCHOLMOD "ON: do not use CHOLMOD in KLU and UMFPACK.  OFF (default): use CHOLMOD" OFF )
+# KLU options affecting dependencies
+option ( KLU_USE_CHOLMOD "ON (default): use CHOLMOD in KLU.  OFF: do not use CHOLMOD in KLU" ON )
 
-# overwrite NSTATIC specifically for GraphBLAS because building the library
-# takes a long time
-option ( GRAPHBLAS_NSTATIC "ON (default): set NSTATIC for GraphBLAS project.  OFF: Use same value of NSTATIC for GraphBLAS like in the other projects" ON )
+# UMFPACK options affecting dependencies
+option ( UMFPACK_USE_CHOLMOD "ON (default): use CHOLMOD in UMFPACK.  OFF: do not use CHOLMOD in UMFPACK" ON )
+
+# overwrite BUILD_STATIC_LIBS specifically for GraphBLAS because building the
+# library takes a long time
+option ( GRAPHBLAS_BUILD_STATIC_LIBS "OFF (default): Do not build static libraries for GraphBLAS project.  ON: Use same value of BUILD_STATIC_LIBS for GraphBLAS like in the other projects" OFF )
 
 # options to build with libraries installed on the system instead of building
 # dependencies automatically
-option ( USE_SYSTEM_BTF "ON: use BTF libraries installed on the build system.  OFF (default): Automatically build BTF as dependency if needed." OFF )
-option ( USE_SYSTEM_CHOLMOD "ON: use CHOLMOD libraries installed on the build system.  OFF (default): Automatically build CHOLMOD as dependency if needed." OFF )
-option ( USE_SYSTEM_AMD "ON: use AMD libraries installed on the build system.  OFF (default): Automatically build AMD as dependency if needed." OFF )
-option ( USE_SYSTEM_COLAMD "ON: use COLAMD libraries installed on the build system.  OFF (default): Automatically build COLAMD as dependency if needed." OFF )
-option ( USE_SYSTEM_CAMD "ON: use CAMD libraries installed on the build system.  OFF (default): Automatically build CAMD as dependency if needed." OFF )
-option ( USE_SYSTEM_CCOLAMD "ON: use CCOLAMD libraries installed on the build system.  OFF (default): Automatically build CCOLAMD as dependency if needed." OFF )
-option ( USE_SYSTEM_GRAPHBLAS "ON: use GraphBLAS libraries installed on the build system.  OFF (default): Automatically build GraphBLAS as dependency if needed." OFF )
-option ( USE_SYSTEM_SUITESPARSE_CONFIG "ON: use SuiteSparse_config libraries installed on the build system.  OFF (default): Automatically build SuiteSparse_config as dependency if needed." OFF )
+option ( SUITESPARSE_USE_SYSTEM_BTF "ON: use BTF libraries installed on the build system.  OFF (default): Automatically build BTF as dependency if needed." OFF )
+option ( SUITESPARSE_USE_SYSTEM_CHOLMOD "ON: use CHOLMOD libraries installed on the build system.  OFF (default): Automatically build CHOLMOD as dependency if needed." OFF )
+option ( SUITESPARSE_USE_SYSTEM_AMD "ON: use AMD libraries installed on the build system.  OFF (default): Automatically build AMD as dependency if needed." OFF )
+option ( SUITESPARSE_USE_SYSTEM_COLAMD "ON: use COLAMD libraries installed on the build system.  OFF (default): Automatically build COLAMD as dependency if needed." OFF )
+option ( SUITESPARSE_USE_SYSTEM_CAMD "ON: use CAMD libraries installed on the build system.  OFF (default): Automatically build CAMD as dependency if needed." OFF )
+option ( SUITESPARSE_USE_SYSTEM_CCOLAMD "ON: use CCOLAMD libraries installed on the build system.  OFF (default): Automatically build CCOLAMD as dependency if needed." OFF )
+option ( SUITESPARSE_USE_SYSTEM_GRAPHBLAS "ON: use GraphBLAS libraries installed on the build system.  OFF (default): Automatically build GraphBLAS as dependency if needed." OFF )
+option ( SUITESPARSE_USE_SYSTEM_SUITESPARSE_CONFIG "ON: use SuiteSparse_config libraries installed on the build system.  OFF (default): Automatically build SuiteSparse_config as dependency if needed." OFF )
 
 #-------------------------------------------------------------------------------
 # global variables
@@ -98,11 +108,12 @@ include ( SuiteSparsePolicy )
 # check/add project dependencies
 #-------------------------------------------------------------------------------
 
-if ( USE_SYSTEM_GRAPHBLAS )
+if ( SUITESPARSE_USE_SYSTEM_GRAPHBLAS )
     list ( REMOVE_ITEM SUITESPARSE_ENABLE_PROJECTS "graphblas" )
-    find_package ( GraphBLAS REQUIRED )
+    find_package ( GraphBLAS 9.0.1 REQUIRED )
 else ( )
     if ( "lagraph" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+        # LAGraph requires GraphBLAS.
         if ( NOT "graphblas" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
             message ( STATUS "Adding \"graphblas\" to the list of built targets." )
             list ( APPEND SUITESPARSE_ENABLE_PROJECTS "graphblas" )
@@ -110,11 +121,12 @@ else ( )
     endif ( )
 endif ( )
 
-if ( USE_SYSTEM_BTF )
+if ( SUITESPARSE_USE_SYSTEM_BTF )
     list ( REMOVE_ITEM SUITESPARSE_ENABLE_PROJECTS "btf" )
-    find_package ( BTF REQUIRED )
+    find_package ( BTF 2.3.1 REQUIRED )
 else ( )
     if ( "klu" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+        # KLU requires BTF.
         if ( NOT "btf" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
             message ( STATUS "Adding \"btf\" to the list of built targets." )
             list ( APPEND SUITESPARSE_ENABLE_PROJECTS "btf" )
@@ -122,15 +134,17 @@ else ( )
     endif ( )
 endif ( )
 
-if ( USE_SYSTEM_CHOLMOD )
+if ( SUITESPARSE_USE_SYSTEM_CHOLMOD )
     list ( REMOVE_ITEM SUITESPARSE_ENABLE_PROJECTS "cholmod" )
-    find_package ( CHOLMOD REQUIRED )
+    find_package ( CHOLMOD 5.1.1 REQUIRED )
 else ( )
-    if ( ( NOT NCHOLMOD AND
-              ( "klu" IN_LIST SUITESPARSE_ENABLE_PROJECTS
-                OR "umfpack" IN_LIST SUITESPARSE_ENABLE_PROJECTS ) )
+    if ( ( KLU_USE_CHOLMOD AND "klu" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+            OR ( UMFPACK_USE_CHOLMOD AND "umfpack" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
             OR "spqr" IN_LIST SUITESPARSE_ENABLE_PROJECTS
             OR "paru" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+        # SPQR and ParU both require CHOLMOD.  KLU and UMFPACK can optionally
+        # use CHOLMOD.  Add CHOLMOD to the list of projects, if it has been
+        # requested by SPQR, ParU, KLU, or UMFPACK, if not already there.
         if ( NOT "cholmod" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
             message ( STATUS "Adding \"cholmod\" to the list of built targets." )
             list ( APPEND SUITESPARSE_ENABLE_PROJECTS "cholmod" )
@@ -138,14 +152,15 @@ else ( )
     endif ( )
 endif ( )
 
-if ( USE_SYSTEM_AMD )
+if ( SUITESPARSE_USE_SYSTEM_AMD )
     list ( REMOVE_ITEM SUITESPARSE_ENABLE_PROJECTS "amd" )
-    find_package ( AMD REQUIRED )
+    find_package ( AMD 3.3.1 REQUIRED )
 else ( )
     if ( "cholmod" IN_LIST SUITESPARSE_ENABLE_PROJECTS
             OR "ldl" IN_LIST SUITESPARSE_ENABLE_PROJECTS
             OR "umfpack" IN_LIST SUITESPARSE_ENABLE_PROJECTS
             OR "spex" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+        # CHOLMOD, LDL, UMFPACK, and SPEX require AMD.
         if ( NOT "amd" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
             message ( STATUS "Adding \"amd\" to the list of built targets." )
             list ( APPEND SUITESPARSE_ENABLE_PROJECTS "amd" )
@@ -153,12 +168,13 @@ else ( )
     endif ( )
 endif ( )
 
-if ( USE_SYSTEM_COLAMD )
+if ( SUITESPARSE_USE_SYSTEM_COLAMD )
     list ( REMOVE_ITEM SUITESPARSE_ENABLE_PROJECTS "colamd" )
-    find_package ( COLAMD REQUIRED )
+    find_package ( COLAMD 3.3.1 REQUIRED )
 else ( )
     if ( "cholmod" IN_LIST SUITESPARSE_ENABLE_PROJECTS
             OR "spex" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+        # CHOLMOD and SPEX require COLAMD.
         if ( NOT "colamd" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
             message ( STATUS "Adding \"colamd\" to the list of built targets." )
             list ( APPEND SUITESPARSE_ENABLE_PROJECTS "colamd" )
@@ -166,23 +182,25 @@ else ( )
     endif ( )
 endif ( )
 
-if ( USE_SYSTEM_CAMD )
+if ( SUITESPARSE_USE_SYSTEM_CAMD )
     list ( REMOVE_ITEM SUITESPARSE_ENABLE_PROJECTS "camd" )
-    find_package ( CAMD REQUIRED )
+    find_package ( CAMD 3.3.1 REQUIRED )
 else ( )
-    if ( NOT NCAMD AND "cholmod" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
-        if ( NOT USE_SYSTEM_CAMD AND NOT "camd" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+    if ( CHOLMOD_CAMD AND "cholmod" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+        # CHOLMOD can optionally use CAMD.
+        if ( NOT SUITESPARSE_USE_SYSTEM_CAMD AND NOT "camd" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
             message ( STATUS "Adding \"camd\" to the list of built targets." )
             list ( APPEND SUITESPARSE_ENABLE_PROJECTS "camd" )
         endif ( )
     endif ( )
 endif ( )
 
-if ( USE_SYSTEM_CCOLAMD )
+if ( SUITESPARSE_USE_SYSTEM_CCOLAMD )
     list ( REMOVE_ITEM SUITESPARSE_ENABLE_PROJECTS "ccolamd" )
-    find_package ( CCOLAMD REQUIRED )
+    find_package ( CCOLAMD 3.3.1 REQUIRED )
 else ( )
-    if ( NOT NCAMD AND "cholmod" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+    if ( CHOLMOD_CAMD AND "cholmod" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+        # CHOLMOD can optionally use CCOLAMD.
         if ( NOT "ccolamd" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
             message ( STATUS "Adding \"ccolamd\" to the list of built targets." )
             list ( APPEND SUITESPARSE_ENABLE_PROJECTS "ccolamd" )
@@ -190,9 +208,9 @@ else ( )
     endif ( )
 endif ( )
 
-if ( USE_SYSTEM_SUITESPARSE_CONFIG )
+if ( SUITESPARSE_USE_SYSTEM_SUITESPARSE_CONFIG )
     list ( REMOVE_ITEM SUITESPARSE_ENABLE_PROJECTS "suitesparse_config" )
-    find_package ( SuiteSparse_config REQUIRED )
+    find_package ( SuiteSparse_config 7.5.0 REQUIRED )
 else ( )
     if ( "mongoose" IN_LIST SUITESPARSE_ENABLE_PROJECTS
             OR "amd" IN_LIST SUITESPARSE_ENABLE_PROJECTS
@@ -209,6 +227,7 @@ else ( )
             OR "rbio" IN_LIST SUITESPARSE_ENABLE_PROJECTS
             OR "spqr" IN_LIST SUITESPARSE_ENABLE_PROJECTS
             OR "spex" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+        # All but CSparse, GraphBLAS, and LAGraph require SuiteSparse_config.
         if ( NOT "suitesparse_config" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
             message ( STATUS "Adding \"suitesparse_config\" to the list of built targets." )
             list ( APPEND SUITESPARSE_ENABLE_PROJECTS "suitesparse_config" )
@@ -216,74 +235,125 @@ else ( )
     endif ( )
 endif ( )
 
+
+if ( CMAKE_VERSION VERSION_LESS 3.24 )
+    # work around missing GLOBAL option of find_package in older CMake versions
+    # If SuiteSparse is included as a sub-project in other projects, they might
+    # need to manually import the OpenMP targets for older CMake versions, too.
+    if ( "suitesparse_config" IN_LIST SUITESPARSE_ENABLE_PROJECTS
+            OR "cholmod" IN_LIST SUITESPARSE_ENABLE_PROJECTS
+            OR "graphblas" IN_LIST SUITESPARSE_ENABLE_PROJECTS
+            OR "paru" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+        find_package ( OpenMP COMPONENTS C )
+    endif ( )
+    if ( "paru" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
+        find_package ( OpenMP COMPONENTS CXX )
+    endif ( )
+endif ( )
+
+
 #-------------------------------------------------------------------------------
 # include selected projects
 #-------------------------------------------------------------------------------
 
 if ( "suitesparse_config" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "SuiteSparse_config" )
-    add_library ( SuiteSparse::SuiteSparseConfig ALIAS SuiteSparseConfig )
-    if ( NOT NSTATIC )
+    if ( TARGET SuiteSparseConfig )
+        add_library ( SuiteSparse::SuiteSparseConfig ALIAS SuiteSparseConfig )
+    else ( )
+        add_library ( SuiteSparse::SuiteSparseConfig ALIAS SuiteSparseConfig_static )
+    endif ( )
+    if ( TARGET SuiteSparseConfig_static )
         add_library ( SuiteSparse::SuiteSparseConfig_static ALIAS SuiteSparseConfig_static )
     endif ( )
 endif ( )
 
 if ( "mongoose" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "Mongoose" )
-    add_library ( SuiteSparse::Mongoose ALIAS Mongoose )
-    if ( NOT NSTATIC )
+    if ( TARGET Mongoose )
+        add_library ( SuiteSparse::Mongoose ALIAS Mongoose )
+    else ( )
+        add_library ( SuiteSparse::Mongoose ALIAS Mongoose_static )
+    endif ( )
+     if ( TARGET Mongoose_static )
         add_library ( SuiteSparse::Mongoose_static ALIAS Mongoose_static )
     endif ( )
 endif ( )
 
 if ( "amd" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "AMD" )
-    add_library ( SuiteSparse::AMD ALIAS AMD )
-    if ( NOT NSTATIC )
+    if ( TARGET AMD )
+        add_library ( SuiteSparse::AMD ALIAS AMD )
+    else ( )
+        add_library ( SuiteSparse::AMD ALIAS AMD_static )
+    endif ( )
+    if ( TARGET AMD_static )
         add_library ( SuiteSparse::AMD_static ALIAS AMD_static )
     endif ( )
 endif ( )
 
 if ( "btf" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "BTF" )
-    add_library ( SuiteSparse::BTF ALIAS BTF )
-    if ( NOT NSTATIC )
+    if ( TARGET BTF )
+        add_library ( SuiteSparse::BTF ALIAS BTF )
+    else ( )
+        add_library ( SuiteSparse::BTF ALIAS BTF_static )
+    endif ( )
+    if ( TARGET BTF_static )
         add_library ( SuiteSparse::BTF_static ALIAS BTF_static )
     endif ( )
 endif ( )
 
 if ( "camd" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "CAMD" )
-    add_library ( SuiteSparse::CAMD ALIAS CAMD )
-    if ( NOT NSTATIC )
+    if ( TARGET CAMD )
+        add_library ( SuiteSparse::CAMD ALIAS CAMD )
+    else ( )
+        add_library ( SuiteSparse::CAMD ALIAS CAMD_static )
+    endif ( )
+    if ( TARGET CAMD_static )
         add_library ( SuiteSparse::CAMD_static ALIAS CAMD_static )
     endif ( )
 endif ( )
 
 if ( "ccolamd" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "CCOLAMD" )
-    add_library ( SuiteSparse::CCOLAMD ALIAS CCOLAMD )
-    if ( NOT NSTATIC )
+    if ( TARGET CCOLAMD )
+        add_library ( SuiteSparse::CCOLAMD ALIAS CCOLAMD )
+    else ( )
+        add_library ( SuiteSparse::CCOLAMD ALIAS CCOLAMD_static )
+    endif ( )
+    if ( TARGET CCOLAMD_static )
         add_library ( SuiteSparse::CCOLAMD_static ALIAS CCOLAMD_static )
     endif ( )
 endif ( )
 
 if ( "colamd" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "COLAMD" )
-    add_library ( SuiteSparse::COLAMD ALIAS COLAMD )
-    if ( NOT NSTATIC )
+    if ( TARGET COLAMD )
+        add_library ( SuiteSparse::COLAMD ALIAS COLAMD )
+    else ( )
+        add_library ( SuiteSparse::COLAMD ALIAS COLAMD_static )
+    endif ( )
+    if ( TARGET COLAMD_static )
         add_library ( SuiteSparse::COLAMD_static ALIAS COLAMD_static )
     endif ( )
 endif ( )
 
 if ( "cholmod" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "CHOLMOD" )
-    add_library ( SuiteSparse::CHOLMOD ALIAS CHOLMOD )
-    if ( NOT NSTATIC )
+    if ( TARGET CHOLMOD )
+        add_library ( SuiteSparse::CHOLMOD ALIAS CHOLMOD )
+    else ( )
+        add_library ( SuiteSparse::CHOLMOD ALIAS CHOLMOD_static )
+    endif ( )
+    if ( TARGET CHOLMOD_static )
         add_library ( SuiteSparse::CHOLMOD_static ALIAS CHOLMOD_static )
     endif ( )
     if ( TARGET CHOLMOD_CUDA )
         add_library ( SuiteSparse::CHOLMOD_CUDA ALIAS CHOLMOD_CUDA )
+    elseif ( TARGET CHOLMOD_CUDA_static )
+        add_library ( SuiteSparse::CHOLMOD_CUDA ALIAS CHOLMOD_CUDA_static )
     endif ( )
     if ( TARGET CHOLMOD_CUDA_static )
         add_library ( SuiteSparse::CHOLMOD_CUDA_static ALIAS CHOLMOD_CUDA_static )
@@ -292,71 +362,107 @@ endif ( )
 
 if ( "cxsparse" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "CXSparse" )
-    add_library ( SuiteSparse::CXSparse ALIAS CXSparse )
-    if ( NOT NSTATIC )
+    if ( TARGET CXSparse )
+        add_library ( SuiteSparse::CXSparse ALIAS CXSparse )
+    else ( )
+        add_library ( SuiteSparse::CXSparse ALIAS CXSparse_static )
+    endif ( )
+    if ( TARGET CXSparse_static )
         add_library ( SuiteSparse::CXSparse_static ALIAS CXSparse_static )
     endif ( )
 endif ( )
 
 if ( "ldl" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "LDL" )
-    add_library ( SuiteSparse::LDL ALIAS LDL )
-    if ( NOT NSTATIC )
+    if ( TARGET LDL )
+        add_library ( SuiteSparse::LDL ALIAS LDL )
+    else ( )
+        add_library ( SuiteSparse::LDL ALIAS LDL_static )
+    endif ( )
+    if ( TARGET LDL_static )
         add_library ( SuiteSparse::LDL_static ALIAS LDL_static )
     endif ( )
 endif ( )
 
 if ( "klu" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "KLU" )
-    add_library ( SuiteSparse::KLU ALIAS KLU )
-    if ( NOT NSTATIC )
+    if ( TARGET KLU )
+        add_library ( SuiteSparse::KLU ALIAS KLU )
+    else ( )
+        add_library ( SuiteSparse::KLU ALIAS KLU_static )
+    endif ( )
+    if ( TARGET KLU_static )
         add_library ( SuiteSparse::KLU_static ALIAS KLU_static )
     endif ( )
 endif ( )
 
 if ( "umfpack" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "UMFPACK" )
-    add_library ( SuiteSparse::UMFPACK ALIAS UMFPACK )
-    if ( NOT NSTATIC )
+    if ( TARGET UMFPACK )
+        add_library ( SuiteSparse::UMFPACK ALIAS UMFPACK )
+    else ( )
+        add_library ( SuiteSparse::UMFPACK ALIAS UMFPACK_static )
+    endif ( )
+    if ( TARGET UMFPACK_static )
         add_library ( SuiteSparse::UMFPACK_static ALIAS UMFPACK_static )
     endif ( )
 endif ( )
 
 if ( "paru" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "ParU" )
-    add_library ( SuiteSparse::ParU ALIAS ParU )
-    if ( NOT NSTATIC )
+    if ( TARGET ParU )
+        add_library ( SuiteSparse::ParU ALIAS ParU )
+    else ( )
+        add_library ( SuiteSparse::ParU ALIAS ParU_static )
+    endif ( )
+    if ( TARGET ParU_static )
         add_library ( SuiteSparse::ParU_static ALIAS ParU_static )
     endif ( )
 endif ( )
 
 if ( "rbio" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "RBio" )
-    add_library ( SuiteSparse::RBio ALIAS RBio )
-    if ( NOT NSTATIC )
+    if ( TARGET RBio )
+        add_library ( SuiteSparse::RBio ALIAS RBio )
+    else ( )
+        add_library ( SuiteSparse::RBio ALIAS RBio_static )
+    endif ( )
+    if ( TARGET RBio_static )
         add_library ( SuiteSparse::RBio_static ALIAS RBio_static )
     endif ( )
 endif ( )
 
 if ( "spqr" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "SPQR" )
-    add_library ( SuiteSparse::SPQR ALIAS SPQR )
-    if ( NOT NSTATIC )
+    if ( TARGET SPQR )
+        add_library ( SuiteSparse::SPQR ALIAS SPQR )
+    else ( )
+        add_library ( SuiteSparse::SPQR ALIAS SPQR_static )
+    endif ( )
+    if ( TARGET SPQR_static )
         add_library ( SuiteSparse::SPQR_static ALIAS SPQR_static )
     endif ( )
 endif ( )
 
 if ( "spex" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "SPEX" )
-    add_library ( SuiteSparse::SPEX ALIAS SPEX )
-    if ( NOT NSTATIC )
+    if ( TARGET SPEX )
+        add_library ( SuiteSparse::SPEX ALIAS SPEX )
+    else ( )
+        add_library ( SuiteSparse::SPEX ALIAS SPEX_static )
+    endif ( )
+    if ( TARGET SPEX_static )
         add_library ( SuiteSparse::SPEX_static ALIAS SPEX_static )
     endif ( )
 endif ( )
 
 if ( "graphblas" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "GraphBLAS" )
-    add_library ( SuiteSparse::GraphBLAS ALIAS GraphBLAS )
+    if ( TARGET GraphBLAS )
+        add_library ( SuiteSparse::GraphBLAS ALIAS GraphBLAS )
+    else ( )
+        add_library ( SuiteSparse::GraphBLAS ALIAS GraphBLAS_static )
+    endif ( )
     if ( TARGET GraphBLAS_static )
         add_library ( SuiteSparse::GraphBLAS_static ALIAS GraphBLAS_static )
     endif ( )
@@ -364,16 +470,24 @@ endif ( )
 
 if ( "lagraph" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "LAGraph" )
-    add_library ( SuiteSparse::LAGraph ALIAS LAGraph )
-    if ( NOT NSTATIC )
+    if ( TARGET LAGraph )
+        add_library ( SuiteSparse::LAGraph ALIAS LAGraph )
+    else ( )
+        add_library ( SuiteSparse::LAGraph ALIAS LAGraph_static )
+    endif ( )
+    if ( TARGET LAGraph_static )
         add_library ( SuiteSparse::LAGraph_static ALIAS LAGraph_static )
     endif ( )
 endif ( )
 
 if ( "csparse" IN_LIST SUITESPARSE_ENABLE_PROJECTS )
     add_subdirectory ( "CSparse" )
-    add_library ( SuiteSparse::CSparse ALIAS CSparse )
-    if ( NOT NSTATIC )
+    if ( TARGET CSparse )
+        add_library ( SuiteSparse::CSparse ALIAS CSparse )
+    else ( )
+        add_library ( SuiteSparse::CSparse ALIAS CSparse_static )
+    endif ( )
+    if ( TARGET CSparse_static )
         add_library ( SuiteSparse::CSparse_static ALIAS CSparse_static )
     endif ( )
 endif ( )
@@ -388,7 +502,39 @@ include ( SuiteSparseReport )
 # enable testing facilities
 #-------------------------------------------------------------------------------
 
-# Currently, only LAGraph and Mongoose have ctests.
-# FIXME: Consider converting (some of) the existing demos to ctests.
+# Currently, only LAGraph, Mongoose, and CHOLMOD have ctests.
 
-enable_testing ( )
+# FIXME: convert more of the existing demos to ctests.
+
+# Most packages have a ./Tcov folder with a full statement coverage test,
+# but these are not imported into cmake yet.
+
+# Most packages also have a ./Demo folder, with shorter examples.  These would
+# be nice to add as quick ctests.
+
+# CHOLMOD/Tcov takes about 20 minutes to run.  It is also a full coverage
+# test of AMD, CAMD, COLAMD, and CCOLAMD, however.  The current CHOLMOD
+# ctest is based on a few ./Demo programs.  It's fast but not a full coverate
+# test.
+
+# The CSparse/CXSparse Tcov tests are very fast and would be good candidates to
+# add.
+
+include ( CTest )
+
+#-------------------------------------------------------------------------------
+# rule to remove all files in build directory
+#-------------------------------------------------------------------------------
+
+file ( GLOB SUITESPARSE_BUILT_FILES ${PROJECT_BINARY_DIR}/* )
+file ( REAL_PATH ${PROJECT_SOURCE_DIR} _real_project_source_dir )
+file ( REAL_PATH ${PROJECT_BINARY_DIR} _real_project_binary_dir )
+if ( _real_project_source_dir STREQUAL _real_project_binary_dir )
+    add_custom_target ( purge
+        COMMENT "The target 'purge' is a no-op for in-tree builds.  Consider building out of the source tree." )
+else ( )
+    add_custom_target ( purge
+        COMMAND ${CMAKE_COMMAND} -E echo "Removing files..."
+        COMMAND ${CMAKE_COMMAND} -E rm -rf ${SUITESPARSE_BUILT_FILES}
+        COMMENT "Purge all files in the build tree" )
+endif ( )

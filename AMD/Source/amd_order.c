@@ -71,9 +71,9 @@ int AMD_order
 	return (AMD_INVALID) ;
     }
 
-    /* check if n or nz will cause size_t overflow */
-    if (((size_t) n) >= SIZE_T_MAX / sizeof (Int)
-     || ((size_t) nz) >= SIZE_T_MAX / sizeof (Int))
+    /* check if n or nz will cause integer overflow */
+    if (((size_t) n) >= Int_MAX / sizeof (Int)
+     || ((size_t) nz) >= Int_MAX / sizeof (Int))
     {
 	if (info) Info [AMD_STATUS] = AMD_OUT_OF_MEMORY ;
 	return (AMD_OUT_OF_MEMORY) ;	    /* problem too large */
@@ -89,8 +89,9 @@ int AMD_order
     }
 
     /* allocate two size-n integer workspaces */
-    Len  = SuiteSparse_malloc (n, sizeof (Int)) ;
-    Pinv = SuiteSparse_malloc (n, sizeof (Int)) ;
+    size_t nn = (size_t) n ;
+    Len  = SuiteSparse_malloc (nn, sizeof (Int)) ;
+    Pinv = SuiteSparse_malloc (nn, sizeof (Int)) ;
     mem += n ;
     mem += n ;
     if (!Len || !Pinv)
@@ -106,7 +107,7 @@ int AMD_order
     {
 	/* sort the input matrix and remove duplicate entries */
 	AMD_DEBUG1 (("Matrix is jumbled\n")) ;
-	Rp = SuiteSparse_malloc (n+1, sizeof (Int)) ;
+	Rp = SuiteSparse_malloc (nn+1, sizeof (Int)) ;
 	Ri = SuiteSparse_malloc (nz,  sizeof (Int)) ;
 	mem += (n+1) ;
 	mem += MAX (nz,1) ;
@@ -150,11 +151,10 @@ int AMD_order
     slen = nzaat ;			/* space for matrix */
     ok = ((slen + nzaat/5) >= slen) ;	/* check for size_t overflow */
     slen += nzaat/5 ;			/* add elbow room */
-    size_t nn = (size_t) n ;            // n is always >= 0
     for (i = 0 ; ok && i < 7 ; i++)
     {
 	ok = ((slen + nn) > slen) ;	/* check for size_t overflow */
-	slen += n ;			/* size-n elbow room, 6 size-n work */
+	slen += nn ;			/* size-n elbow room, 6 size-n work */
     }
     mem += slen ;
     ok = ok && (slen < SIZE_T_MAX / sizeof (Int)) ; /* check for overflow */

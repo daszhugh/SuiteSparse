@@ -2,7 +2,7 @@
 // RBio/Include/RBio.h: include file for RBio
 //------------------------------------------------------------------------------
 
-// RBio, Copyright (c) 2009-2022, Timothy A. Davis.  All Rights Reserved.
+// RBio, Copyright (c) 2009-2023, Timothy A. Davis.  All Rights Reserved.
 // SPDX-License-Identifier: GPL-2.0+
 
 //------------------------------------------------------------------------------
@@ -47,10 +47,6 @@
 /* include files */
 /* -------------------------------------------------------------------------- */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "SuiteSparse_config.h"
 
 /* -------------------------------------------------------------------------- */
@@ -79,14 +75,19 @@ extern "C" {
 #define RBIO_VALUE_IOERROR (-94)  /* I/O error: numerical values */
 #define RBIO_FILE_IOERROR (-95)   /* I/O error: cannot read/write the file */
 
-#define RBIO_DATE "Sept 18, 2023"
+#define RBIO_DATE "Jan XX, 2024"
 #define RBIO_MAIN_VERSION   4
-#define RBIO_SUB_VERSION    2
+#define RBIO_SUB_VERSION    3
 #define RBIO_SUBSUB_VERSION 1
 
-#define RBIO_VER_CODE(main,sub) ((main) * 1000 + (sub))
-#define RBIO_VERSION RBIO_VER_CODE(RBIO_MAIN_VERSION,RBIO_SUB_VERSION)
+#define RBIO_VER_CODE(main,sub) SUITESPARSE_VER_CODE(main,sub)
+#define RBIO_VERSION RBIO_VER_CODE(4,3)
 
+#define RBIO__VERSION SUITESPARSE__VERCODE(4,3,1)
+#if !defined (SUITESPARSE__VERSION) || \
+    (SUITESPARSE__VERSION < SUITESPARSE__VERCODE(7,5,0))
+#error "RBio 4.3.1 requires SuiteSparse_config 7.5.0 or later"
+#endif
 
 /* -------------------------------------------------------------------------- */
 /* user-callable functions */
@@ -110,6 +111,10 @@ extern "C" {
     with int64_t integers.  The default type is int64_t.  Functions for int32_t
     integers have the _i suffix appended to their names.
 */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int RBkind_i        /* 0: OK, < 0: error, > 0: warning */
 (
@@ -287,6 +292,8 @@ int RBok (int64_t nrow, int64_t ncol,
 #ifdef MATLAB_MEX_FILE
 void RBerror (int status) ;     /* only for MATLAB mexFunctions */
 #endif
+
+void RBio_version (int version [3]) ;
 
 #ifdef __cplusplus
 }

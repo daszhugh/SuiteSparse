@@ -1,33 +1,28 @@
 #-------------------------------------------------------------------------------
-# SuiteSparse/GPUQREngine/CMakeLists.txt
+# SPQR/GPUQREngine/CMakeLists.txt
 #-------------------------------------------------------------------------------
 
-# GPUQREngine, Copyright (c) 2013-2023, Timothy A Davis, Sencer Nuri Yeralan,
-# and Sanjay Ranka.  All Rights Reserved.
+# SPQR/GPUQREngine, Copyright (c) 2013-2023, Timothy A Davis, Sencer Nuri
+# Yeralan, and Sanjay Ranka.  All Rights Reserved.
 # SPDX-License-Identifier: GPL-2.0+
 
 #-------------------------------------------------------------------------------
 # get the version
 #-------------------------------------------------------------------------------
 
-cmake_minimum_required ( VERSION 3.20 )
+cmake_minimum_required ( VERSION 3.22 )
 
-set ( GPUQRENGINE_DATE "Oct 23, 2023" )
-set ( GPUQRENGINE_VERSION_MAJOR 3 CACHE STRING "" FORCE )
-set ( GPUQRENGINE_VERSION_MINOR 2 CACHE STRING "" FORCE )
-set ( GPUQRENGINE_VERSION_SUB   2 CACHE STRING "" FORCE )
-
-message ( STATUS "Building GPUQRENGINE version: v"
-    ${GPUQRENGINE_VERSION_MAJOR}.
-    ${GPUQRENGINE_VERSION_MINOR}.
-    ${GPUQRENGINE_VERSION_SUB} " (" ${GPUQRENGINE_DATE} ")" )
+message ( STATUS "Building SPQR/GPUQRENGINE version: v"
+    ${SPQR_VERSION_MAJOR}.
+    ${SPQR_VERSION_MINOR}.
+    ${SPQR_VERSION_SUB} " (" ${SPQR_DATE} ")" )
 
 #-------------------------------------------------------------------------------
 # define the project
 #-------------------------------------------------------------------------------
 
 project ( gpuqrengine 
-    VERSION "${GPUQRENGINE_VERSION_MAJOR}.${GPUQRENGINE_VERSION_MINOR}.${GPUQRENGINE_VERSION_SUB}"
+    VERSION "${SPQR_VERSION_MAJOR}.${SPQR_VERSION_MINOR}.${SPQR_VERSION_SUB}"
     LANGUAGES CXX CUDA )
 
 #-------------------------------------------------------------------------------
@@ -37,9 +32,7 @@ project ( gpuqrengine
 set ( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
     ${PROJECT_SOURCE_DIR}/../../SuiteSparse_config/cmake_modules )
 
-option ( ENABLE_CUDA "Enable CUDA acceleration" ON )
-
-include ( SuiteSparsePolicy )
+# include ( SuiteSparsePolicy )
 
 #-------------------------------------------------------------------------------
 # find library dependencies
@@ -48,16 +41,16 @@ include ( SuiteSparsePolicy )
 # Demo disabled for GPUQREngine v2.x
 set ( DEMO_OK false )
 
-if ( NOT SUITESPARSE_ROOT_CMAKELISTS AND DEMO AND DEMO_OK )
+if ( NOT SUITESPARSE_ROOT_CMAKELISTS AND SUITESPARSE_DEMOS AND DEMO_OK )
     # for the demo only:
-    find_package ( CHOLMOD 5.0.0
+    find_package ( CHOLMOD 5.1.1
         PATHS ${CMAKE_SOURCE_DIR}/../../CHOLMOD/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::CHOLMOD )
-        find_package ( CHOLMOD 5.0.0 )
+        find_package ( CHOLMOD 5.1.1 )
     endif ( )
 endif ( )
 
-if ( SUITESPARSE_CUDA AND CHOLMOD_FOUND )
+if ( CHOLMOD_FOUND )
     set ( DEMO_OK true )
 else ( )
     set ( DEMO_OK false )
@@ -82,48 +75,50 @@ set ( GPUQRENGINE_INCLUDES Include Include/Kernel
 # dynamic gpuqrengine library properties
 #-------------------------------------------------------------------------------
 
-add_library ( GPUQREngine SHARED ${GPUQRENGINE_SOURCES} )
+if ( BUILD_SHARED_LIBS )
+    add_library ( GPUQREngine SHARED ${GPUQRENGINE_SOURCES} )
 
-set_target_properties ( GPUQREngine PROPERTIES
-    VERSION ${GPUQRENGINE_VERSION_MAJOR}.${GPUQRENGINE_VERSION_MINOR}.${GPUQRENGINE_VERSION_SUB}
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
-    OUTPUT_NAME gpuqrengine
-    SOVERSION ${GPUQRENGINE_VERSION_MAJOR}
-    PUBLIC_HEADER "Include/GPUQREngine.hpp"
-    WINDOWS_EXPORT_ALL_SYMBOLS ON )
+    set_target_properties ( GPUQREngine PROPERTIES
+        VERSION ${SPQR_VERSION_MAJOR}.${SPQR_VERSION_MINOR}.${SPQR_VERSION_SUB}
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        OUTPUT_NAME gpuqrengine
+        SOVERSION ${SPQR_VERSION_MAJOR}
+        PUBLIC_HEADER "Include/GPUQREngine.hpp"
+        WINDOWS_EXPORT_ALL_SYMBOLS ON )
 
-target_include_directories ( GPUQREngine PRIVATE
-    ${GPUQRENGINE_INCLUDES}
-    "$<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>"
-    "$<TARGET_PROPERTY:GPURuntime,INTERFACE_INCLUDE_DIRECTORIES>" )
+    target_include_directories ( GPUQREngine PRIVATE
+        ${GPUQRENGINE_INCLUDES} )
 
-set_target_properties ( GPUQREngine PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
-    CUDA_SEPARABLE_COMPILATION ON
-    CUDA_RESOLVE_DEVICE_SYMBOLS ON
-    CUDA_RUNTIME_LIBRARY Static )
-target_link_libraries ( GPUQREngine PRIVATE
-    CUDA::nvrtc CUDA::cudart_static CUDA::nvToolsExt CUDA::cublas )
-target_compile_definitions ( GPUQREngine PRIVATE "SUITESPARSE_CUDA" )
+    target_link_libraries ( GPUQREngine PRIVATE
+        GPURuntime SuiteSparse::SuiteSparseConfig )
 
-target_include_directories ( GPUQREngine
-    INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
-              $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+    set_target_properties ( GPUQREngine PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+        CUDA_SEPARABLE_COMPILATION ON
+        CUDA_RESOLVE_DEVICE_SYMBOLS ON
+        CUDA_RUNTIME_LIBRARY Static )
+    target_link_libraries ( GPUQREngine PRIVATE
+        CUDA::nvrtc CUDA::cudart_static CUDA::cublas )
+    target_compile_definitions ( GPUQREngine PRIVATE "SPQR_HAS_CUDA" )
+
+    target_include_directories ( GPUQREngine
+        INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
+                  $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+endif ( )
 
 #-------------------------------------------------------------------------------
 # static gpuqrengine library properties
 #-------------------------------------------------------------------------------
 
-if ( NOT NSTATIC )
+if ( BUILD_STATIC_LIBS )
     add_library ( GPUQREngine_static STATIC ${GPUQRENGINE_SOURCES} )
 
     set_target_properties ( GPUQREngine_static PROPERTIES
-        VERSION ${GPUQRENGINE_VERSION_MAJOR}.${GPUQRENGINE_VERSION_MINOR}.${GPUQRENGINE_VERSION_SUB}
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         OUTPUT_NAME gpuqrengine
-        SOVERSION ${GPUQRENGINE_VERSION_MAJOR} )
+        PUBLIC_HEADER "Include/GPUQREngine.hpp" )
 
     if ( MSVC )
         set_target_properties ( GPUQREngine_static PROPERTIES
@@ -132,18 +127,32 @@ if ( NOT NSTATIC )
 
     target_include_directories ( GPUQREngine_static PRIVATE
         ${CUDAToolkit_INCLUDE_DIRS}
-        ${GPUQRENGINE_INCLUDES}
-        $<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>
-        $<TARGET_PROPERTY:GPURuntime,INTERFACE_INCLUDE_DIRECTORIES> )
+        ${GPUQRENGINE_INCLUDES} )
+
+    target_link_libraries ( GPUQREngine_static PRIVATE GPURuntime_static )
+
+    if ( TARGET SuiteSparse::SuiteSparseConfig_static )
+        target_link_libraries ( GPUQREngine_static PRIVATE SuiteSparse::SuiteSparseConfig_static )
+    else ( )
+        target_link_libraries ( GPUQREngine_static PRIVATE SuiteSparse::SuiteSparseConfig )
+    endif ( )
 
     set_target_properties ( GPUQREngine_static PROPERTIES
         POSITION_INDEPENDENT_CODE ON
         CUDA_SEPARABLE_COMPILATION ON
         CUDA_RESOLVE_DEVICE_SYMBOLS ON
         CUDA_RUNTIME_LIBRARY Static )
-    target_link_libraries ( GPUQREngine_static PUBLIC
-        CUDA::nvrtc CUDA::cudart_static CUDA::nvToolsExt CUDA::cublas )
-    target_compile_definitions ( GPUQREngine_static PRIVATE "SUITESPARSE_CUDA" )
+    target_link_libraries ( GPUQREngine_static PRIVATE CUDA::nvrtc CUDA::cudart_static )
+    target_compile_definitions ( GPUQREngine_static PRIVATE "SPQR_HAS_CUDA" )
+    # FIXME: Ok to hardcode CUDA library names like this?
+    set ( GPUQRENGINE_STATIC_LIBS "-L${CUDAToolkit_LIBRARY_DIR} -lcuda -lcudart_static" )
+    if ( TARGET CUDA::cublas_static )
+        target_link_libraries ( GPUQREngine_static PRIVATE CUDA::cublas_static )
+        set ( GPUQRENGINE_STATIC_LIBS "${GPUQRENGINE_STATIC_LIBS} -lcublas_static -lcublasLt_static -lculibos" )
+    else ( )
+        target_link_libraries ( GPUQREngine_static PRIVATE CUDA::cublas )
+        set ( GPUQRENGINE_STATIC_LIBS "${GPUQRENGINE_STATIC_LIBS} -lcublas" )
+    endif ( )
 
     target_include_directories ( GPUQREngine_static
         INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
@@ -156,16 +165,19 @@ endif ( )
 
 include ( CMakePackageConfigHelpers )
 
-install ( TARGETS GPUQREngine
-    EXPORT GPUQREngineTargets
-    LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
-    ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
-    RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
-    PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    install ( TARGETS GPUQREngine
+        EXPORT GPUQREngineTargets
+        LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
+        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
+        RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     install ( TARGETS GPUQREngine_static
         EXPORT GPUQREngineTargets
-        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR} )
+        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
 endif ( )
 
 # create (temporary) export target file during build
@@ -211,10 +223,19 @@ if ( NOT MSVC )
     else ( )
         set ( includedir "\${prefix}/${SUITESPARSE_INCLUDEDIR}")
     endif ( )
+    if ( BUILD_SHARED_LIBS )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:GPUQREngine> )
+    else ( )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:GPUQREngine_static> )
+    endif ( )
     configure_file (
         Config/GPUQREngine.pc.in
-        GPUQREngine.pc
+        GPUQREngine.pc.out
         @ONLY
+        NEWLINE_STYLE LF )
+    file ( GENERATE
+        OUTPUT GPUQREngine.pc
+        INPUT ${CMAKE_CURRENT_BINARY_DIR}/GPUQREngine.pc.out
         NEWLINE_STYLE LF )
     install ( FILES
         ${CMAKE_CURRENT_BINARY_DIR}/GPUQREngine.pc
@@ -225,7 +246,7 @@ endif ( )
 # Demo library and programs
 #-------------------------------------------------------------------------------
 
-if ( DEMO AND DEMO_OK )
+if ( SUITESPARSE_DEMOS AND DEMO_OK )
 
     #---------------------------------------------------------------------------
     # demo library
@@ -240,8 +261,15 @@ if ( DEMO AND DEMO_OK )
     add_executable ( gpuqrengine_demo "Demo/gpuqrengine_demo.cpp" )
 
     # Libraries required for Demo programs
-    target_link_libraries ( gpuqrengine_demo PUBLIC GPUQREngine GPURuntime
-        SuiteSparse::CHOLMOD SuiteSparse::CHOLMOD_CUDA SuiteSparse::SuiteSparseConfig )
+    if ( BUILD_SHARED_LIBS )
+        target_link_libraries ( gpuqrengine_demo
+            PUBLIC GPUQREngine GPURuntime )
+    else ( )
+        target_link_libraries ( gpuqrengine_demo
+            PUBLIC GPUQREngine_static GPURuntime_static )
+    endif ( )
+    target_link_libraries ( gpuqrengine_demo
+        PUBLIC SuiteSparse::CHOLMOD SuiteSparse::SuiteSparseConfig )
 
 else ( )
 

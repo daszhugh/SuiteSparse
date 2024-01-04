@@ -2,19 +2,19 @@
 # SuiteSparse/SPEX/CMakeLists.txt:  cmake for SPEX
 #-------------------------------------------------------------------------------
 
-# Copyright (c) 1996-2023, Timothy A. Davis, Patrick Amestoy, Iain Duff.
-# All Rights Reserved.
-# SPDX-License-Identifier: BSD-3-clause
+# SPEX_Left_LU: (c) 2019-2024, Chris Lourenco (US Naval Academy), Jinhao Chen,
+# Erick Moreno-Centeno, Timothy A. Davis, Texas A&M.  All Rights Reserved.
+# SPDX-License-Identifier: GPL-2.0-or-later or LGPL-3.0-or-later
 
 #-------------------------------------------------------------------------------
 # get the version
 #-------------------------------------------------------------------------------
 
-cmake_minimum_required ( VERSION 3.20 )
+cmake_minimum_required ( VERSION 3.22 )
 
-set ( SPEX_DATE "Sept 18, 2023" )
+set ( SPEX_DATE "Jan XX, 2024" )    # FIXME for 7.5.0
 set ( SPEX_VERSION_MAJOR 2 CACHE STRING "" FORCE )
-set ( SPEX_VERSION_MINOR 2 CACHE STRING "" FORCE )
+set ( SPEX_VERSION_MINOR 3 CACHE STRING "" FORCE )
 set ( SPEX_VERSION_SUB   1 CACHE STRING "" FORCE )
 
 message ( STATUS "Building SPEX version: v"
@@ -26,7 +26,7 @@ message ( STATUS "Building SPEX version: v"
 # define the project
 #-------------------------------------------------------------------------------
 
-project ( spex
+project ( SPEX
     VERSION "${SPEX_VERSION_MAJOR}.${SPEX_VERSION_MINOR}.${SPEX_VERSION_SUB}"
     LANGUAGES C )
 
@@ -45,22 +45,22 @@ include ( SuiteSparsePolicy )
 #-------------------------------------------------------------------------------
 
 if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    find_package ( SuiteSparse_config 7.2.0
+    find_package ( SuiteSparse_config 7.5.0
         PATHS ${CMAKE_SOURCE_DIR}/../SuiteSparse_config/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::SuiteSparseConfig )
-        find_package ( SuiteSparse_config 7.2.0 REQUIRED )
+        find_package ( SuiteSparse_config 7.5.0 REQUIRED )
     endif ( )
 
-    find_package ( AMD 3.2.0
+    find_package ( AMD 3.3.1
         PATHS ${CMAKE_SOURCE_DIR}/../AMD/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::AMD )
-        find_package ( AMD 3.2.0 REQUIRED )
+        find_package ( AMD 3.3.1 REQUIRED )
     endif ( )
 
-    find_package ( COLAMD 3.2.0
+    find_package ( COLAMD 3.3.1
         PATHS ${CMAKE_SOURCE_DIR}/../COLAMD/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::COLAMD )
-        find_package ( COLAMD 3.2.0 REQUIRED )
+        find_package ( COLAMD 3.3.1 REQUIRED )
     endif ( )
 endif ( )
 
@@ -83,8 +83,7 @@ configure_file ( "Config/SPEX_version.tex.in"
 #-------------------------------------------------------------------------------
 
 include_directories ( SPEX_Left_LU/Source SPEX_Util/Source Include 
-    SPEX_Left_LU/Demo
-    ${GMP_INCLUDE_DIR} ${MPFR_INCLUDE_DIR} )
+    SPEX_Left_LU/Demo )
 
 #-------------------------------------------------------------------------------
 # dynamic spex library properties
@@ -92,44 +91,52 @@ include_directories ( SPEX_Left_LU/Source SPEX_Util/Source Include
 
 file ( GLOB SPEX_SOURCES "SPEX*/Source/*.c" )
 
-add_library ( SPEX SHARED ${SPEX_SOURCES} )
+if ( BUILD_SHARED_LIBS )
+    add_library ( SPEX SHARED ${SPEX_SOURCES} )
 
-set_target_properties ( SPEX PROPERTIES
-    VERSION ${SPEX_VERSION_MAJOR}.${SPEX_VERSION_MINOR}.${SPEX_VERSION_SUB}
-    C_STANDARD 11
-    C_STANDARD_REQUIRED ON
-    OUTPUT_NAME spex
-    SOVERSION ${SPEX_VERSION_MAJOR}
-    PUBLIC_HEADER "Include/SPEX.h"
-    WINDOWS_EXPORT_ALL_SYMBOLS ON )
+    set_target_properties ( SPEX PROPERTIES
+        VERSION ${SPEX_VERSION_MAJOR}.${SPEX_VERSION_MINOR}.${SPEX_VERSION_SUB}
+        C_STANDARD 11
+        C_STANDARD_REQUIRED ON
+        OUTPUT_NAME spex
+        SOVERSION ${SPEX_VERSION_MAJOR}
+        PUBLIC_HEADER "Include/SPEX.h"
+        WINDOWS_EXPORT_ALL_SYMBOLS ON )
 
-target_include_directories ( SPEX 
-    INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
-              $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+    if ( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.25" )
+        set_target_properties ( SPEX PROPERTIES EXPORT_NO_SYSTEM ON )
+    endif ( )
+
+    target_include_directories ( SPEX 
+        INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
+                  $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+endif ( )
 
 #-------------------------------------------------------------------------------
 # static spex library properties
 #-------------------------------------------------------------------------------
 
-if ( NOT NSTATIC )
+if ( BUILD_STATIC_LIBS )
     add_library ( SPEX_static STATIC ${SPEX_SOURCES} )
 
     set_target_properties ( SPEX_static PROPERTIES
-        VERSION ${SPEX_VERSION_MAJOR}.${SPEX_VERSION_MINOR}.${SPEX_VERSION_SUB}
         C_STANDARD 11
         C_STANDARD_REQUIRED ON
         OUTPUT_NAME spex
-        SOVERSION ${SPEX_VERSION_MAJOR} )
+        PUBLIC_HEADER "Include/SPEX.h" )
 
     if ( MSVC )
         set_target_properties ( SPEX_static PROPERTIES
             OUTPUT_NAME spex_static )
     endif ( )
 
+    if ( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.25" )
+        set_target_properties ( SPEX_static PROPERTIES EXPORT_NO_SYSTEM ON )
+    endif ( )
+
     target_include_directories ( SPEX_static 
         INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
                   $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
-
 endif ( )
 
 #-------------------------------------------------------------------------------
@@ -137,10 +144,12 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 # SuiteSparseConfig:
-target_link_libraries ( SPEX PRIVATE SuiteSparse::SuiteSparseConfig )
-target_include_directories ( SPEX PUBLIC
-    "$<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>" )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    target_link_libraries ( SPEX PRIVATE SuiteSparse::SuiteSparseConfig )
+    target_include_directories ( SPEX PUBLIC
+        "$<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>" )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     if ( TARGET SuiteSparse::SuiteSparseConfig_static )
         target_link_libraries ( SPEX_static PUBLIC SuiteSparse::SuiteSparseConfig_static )
     else ( )
@@ -149,44 +158,60 @@ if ( NOT NSTATIC )
 endif ( )
 
 # AMD:
-target_link_libraries ( SPEX PRIVATE SuiteSparse::AMD )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    target_link_libraries ( SPEX PRIVATE SuiteSparse::AMD )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     if ( TARGET SuiteSparse::AMD_static )
-        target_link_libraries ( SPEX_static PUBLIC SuiteSparse::AMD_static )
+        target_link_libraries ( SPEX_static PRIVATE SuiteSparse::AMD_static )
     else ( )
-        target_link_libraries ( SPEX_static PUBLIC SuiteSparse::AMD )
+        target_link_libraries ( SPEX_static PRIVATE SuiteSparse::AMD )
     endif ( )
 endif ( )
 
 # COLAMD:
-target_link_libraries ( SPEX PRIVATE SuiteSparse::COLAMD )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    target_link_libraries ( SPEX PRIVATE SuiteSparse::COLAMD )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     if ( TARGET SuiteSparse::COLAMD_static )
-        target_link_libraries ( SPEX_static PUBLIC SuiteSparse::COLAMD_static )
+        target_link_libraries ( SPEX_static PRIVATE SuiteSparse::COLAMD_static )
     else ( )
-        target_link_libraries ( SPEX_static PUBLIC SuiteSparse::COLAMD )
+        target_link_libraries ( SPEX_static PRIVATE SuiteSparse::COLAMD )
     endif ( )
 endif ( )
 
 # MPFR:
-target_link_libraries ( SPEX PRIVATE ${MPFR_LIBRARIES} )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    target_link_libraries ( SPEX PRIVATE ${MPFR_LIBRARIES} )
+    target_include_directories ( SPEX SYSTEM AFTER PUBLIC ${MPFR_INCLUDE_DIR} )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     list ( APPEND SPEX_STATIC_LIBS ${MPFR_STATIC} )
     target_link_libraries ( SPEX_static PUBLIC ${MPFR_STATIC} )
+    target_include_directories ( SPEX_static SYSTEM AFTER PUBLIC ${MPFR_INCLUDE_DIR} )
 endif ( )
 
 # GMP:
 # must occur after MPFR
-target_link_libraries ( SPEX PRIVATE ${GMP_LIBRARIES} )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    target_link_libraries ( SPEX PRIVATE ${GMP_LIBRARIES} )
+    target_include_directories ( SPEX SYSTEM AFTER PUBLIC ${GMP_INCLUDE_DIR} )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     list ( APPEND SPEX_STATIC_LIBS ${GMP_STATIC} )
     target_link_libraries ( SPEX_static PUBLIC ${GMP_STATIC} )
+    target_include_directories ( SPEX_static SYSTEM AFTER PUBLIC ${GMP_INCLUDE_DIR} )
 endif ( )
 
 # libm:
-if ( NOT WIN32 )
-    target_link_libraries ( SPEX PRIVATE m )
-    if ( NOT NSTATIC )
+include ( CheckSymbolExists )
+check_symbol_exists ( fmax "math.h" NO_LIBM )
+if ( NOT NO_LIBM )
+    if ( BUILD_SHARED_LIBS )
+        target_link_libraries ( SPEX PRIVATE m )
+    endif ( )
+    if ( BUILD_STATIC_LIBS )
         list ( APPEND SPEX_STATIC_LIBS "m" )
         target_link_libraries ( SPEX_static PUBLIC m )
     endif ( )
@@ -198,16 +223,19 @@ endif ( )
 
 include ( CMakePackageConfigHelpers )
 
-install ( TARGETS SPEX
-    EXPORT SPEXTargets
-    LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
-    ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
-    RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
-    PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    install ( TARGETS SPEX
+        EXPORT SPEXTargets
+        LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
+        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
+        RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     install ( TARGETS SPEX_static
         EXPORT SPEXTargets
-        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR} )
+        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
 endif ( )
 
 # create (temporary) export target file during build
@@ -291,10 +319,19 @@ if ( NOT MSVC )
     else ( )
         set ( includedir "\${prefix}/${SUITESPARSE_INCLUDEDIR}")
     endif ( )
+    if ( BUILD_SHARED_LIBS )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:SPEX> )
+    else ( )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:SPEX_static> )
+    endif ( )
     configure_file (
         Config/SPEX.pc.in
-        SPEX.pc
+        SPEX.pc.out
         @ONLY
+        NEWLINE_STYLE LF )
+    file ( GENERATE
+        OUTPUT SPEX.pc
+        INPUT ${CMAKE_CURRENT_BINARY_DIR}/SPEX.pc.out
         NEWLINE_STYLE LF )
     install ( FILES
         ${CMAKE_CURRENT_BINARY_DIR}/SPEX.pc
@@ -305,8 +342,7 @@ endif ( )
 # Demo library and programs
 #-------------------------------------------------------------------------------
 
-option ( DEMO "ON: Build the demo programs.  OFF (default): do not build the demo programs." off )
-if ( DEMO )
+if ( SUITESPARSE_DEMOS )
 
     #---------------------------------------------------------------------------
     # demo library
@@ -325,9 +361,15 @@ if ( DEMO )
                                  "SPEX_Left_LU/Demo/demos.c" )
 
     # Libraries required for Demo programs
-    target_link_libraries ( spexlu_demo PUBLIC SPEX )
-    target_link_libraries ( example  PUBLIC SPEX )
-    target_link_libraries ( example2 PUBLIC SPEX )
+    if ( BUILD_SHARED_LIBS )
+        target_link_libraries ( spexlu_demo PUBLIC SPEX )
+        target_link_libraries ( example PUBLIC SPEX )
+        target_link_libraries ( example2 PUBLIC SPEX )
+    else ( )
+        target_link_libraries ( spexlu_demo PUBLIC SPEX_static )
+        target_link_libraries ( example PUBLIC SPEX_static )
+        target_link_libraries ( example2 PUBLIC SPEX_static )
+    endif ( )
 
 else ( )
 
@@ -339,6 +381,4 @@ endif ( )
 # report status
 #-------------------------------------------------------------------------------
 
-if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    include ( SuiteSparseReport )
-endif ( )
+include ( SuiteSparseReport )

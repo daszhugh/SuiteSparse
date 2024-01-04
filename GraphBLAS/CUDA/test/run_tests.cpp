@@ -1,8 +1,14 @@
+//------------------------------------------------------------------------------
+// GraphBLAS/CUDA/test/run_tests.cpp
+//------------------------------------------------------------------------------
+
+// SPDX-License-Identifier: Apache-2.0
+
+//------------------------------------------------------------------------------
+
 #include <gtest/gtest.h>
 
-extern "C" {
-#include "GraphBLAS.h"
-}
+#include "GraphBLAS_cuda.h"
 #include "rmm_wrap.h"
 
 #include "test_utility.hpp"

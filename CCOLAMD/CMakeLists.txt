@@ -2,18 +2,18 @@
 # SuiteSparse/CCOLAMD/CMakeLists.txt:  cmake for CCOLAMD
 #-------------------------------------------------------------------------------
 
-# Copyright (c) 2005-2023, Timothy A. Davis.  All Rights Reserved.
+# Copyright (c) 2005-2024, Timothy A. Davis.  All Rights Reserved.
 # SPDX-License-Identifier: BSD-3-clause
 
 #-------------------------------------------------------------------------------
 # get the version
 #-------------------------------------------------------------------------------
 
-cmake_minimum_required ( VERSION 3.20 )
+cmake_minimum_required ( VERSION 3.22 )
 
-set ( CCOLAMD_DATE "Sept 18, 2023" )
+set ( CCOLAMD_DATE "Jan XX, 2024" )     # FIXME for 7.5.0
 set ( CCOLAMD_VERSION_MAJOR 3 CACHE STRING "" FORCE )
-set ( CCOLAMD_VERSION_MINOR 2 CACHE STRING "" FORCE )
+set ( CCOLAMD_VERSION_MINOR 3 CACHE STRING "" FORCE )
 set ( CCOLAMD_VERSION_SUB   1 CACHE STRING "" FORCE )
 
 message ( STATUS "Building CCOLAMD version: v"
@@ -25,7 +25,7 @@ message ( STATUS "Building CCOLAMD version: v"
 # define the project
 #-------------------------------------------------------------------------------
 
-project ( ccolamd
+project ( CCOLAMD
     VERSION "${CCOLAMD_VERSION_MAJOR}.${CCOLAMD_VERSION_MINOR}.${CCOLAMD_VERSION_SUB}"
     LANGUAGES C )
 
@@ -43,10 +43,10 @@ include ( SuiteSparsePolicy )
 #-------------------------------------------------------------------------------
 
 if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    find_package ( SuiteSparse_config 7.2.0
+    find_package ( SuiteSparse_config 7.5.0
         PATHS ${CMAKE_SOURCE_DIR}/../SuiteSparse_config/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::SuiteSparseConfig )
-        find_package ( SuiteSparse_config 7.2.0 REQUIRED )
+        find_package ( SuiteSparse_config 7.5.0 REQUIRED )
     endif ( )
 endif ( )
 
@@ -70,54 +70,64 @@ include_directories ( Source Include )
 
 file ( GLOB CCOLAMD_SOURCES "Source/*.c" )
 
-add_library ( CCOLAMD SHARED ${CCOLAMD_SOURCES} )
+if ( BUILD_SHARED_LIBS )
+    add_library ( CCOLAMD SHARED ${CCOLAMD_SOURCES} )
 
-set_target_properties ( CCOLAMD PROPERTIES
-    VERSION ${CCOLAMD_VERSION_MAJOR}.${CCOLAMD_VERSION_MINOR}.${CCOLAMD_VERSION_SUB}
-    C_STANDARD 11
-    C_STANDARD_REQUIRED ON
-    OUTPUT_NAME ccolamd
-    SOVERSION ${CCOLAMD_VERSION_MAJOR}
-    PUBLIC_HEADER "Include/ccolamd.h"
-    WINDOWS_EXPORT_ALL_SYMBOLS ON )
+    set_target_properties ( CCOLAMD PROPERTIES
+        VERSION ${CCOLAMD_VERSION_MAJOR}.${CCOLAMD_VERSION_MINOR}.${CCOLAMD_VERSION_SUB}
+        C_STANDARD 11
+        C_STANDARD_REQUIRED ON
+        OUTPUT_NAME ccolamd
+        SOVERSION ${CCOLAMD_VERSION_MAJOR}
+        PUBLIC_HEADER "Include/ccolamd.h"
+        WINDOWS_EXPORT_ALL_SYMBOLS ON )
 
-target_include_directories ( CCOLAMD
-    INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
-              $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+    if ( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.25" )
+        set_target_properties ( CCOLAMD PROPERTIES EXPORT_NO_SYSTEM ON )
+    endif ( )
+
+    target_include_directories ( CCOLAMD
+        INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
+                  $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+endif ( )
 
 #-------------------------------------------------------------------------------
 # static ccolamd library properties
 #-------------------------------------------------------------------------------
 
-if ( NOT NSTATIC )
+if ( BUILD_STATIC_LIBS )
     add_library ( CCOLAMD_static STATIC ${CCOLAMD_SOURCES} )
 
     set_target_properties ( CCOLAMD_static PROPERTIES
-        VERSION ${CCOLAMD_VERSION_MAJOR}.${CCOLAMD_VERSION_MINOR}.${CCOLAMD_VERSION_SUB}
         OUTPUT_NAME ccolamd
         C_STANDARD 11
         C_STANDARD_REQUIRED ON
-        SOVERSION ${CCOLAMD_VERSION_MAJOR} )
+        PUBLIC_HEADER "Include/ccolamd.h" )
 
     if ( MSVC )
         set_target_properties ( CCOLAMD_static PROPERTIES
             OUTPUT_NAME ccolamd_static )
     endif ( )
 
+    if ( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.25" )
+        set_target_properties ( CCOLAMD_static PROPERTIES EXPORT_NO_SYSTEM ON )
+    endif ( )
+
     target_include_directories ( CCOLAMD_static
         INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
                   $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
-
 endif ( )
 
 #-------------------------------------------------------------------------------
 # add the library dependencies
 #-------------------------------------------------------------------------------
 
-target_link_libraries ( CCOLAMD PRIVATE SuiteSparse::SuiteSparseConfig )
-target_include_directories ( CCOLAMD PUBLIC
-    "$<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>" )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    target_link_libraries ( CCOLAMD PRIVATE SuiteSparse::SuiteSparseConfig )
+    target_include_directories ( CCOLAMD PUBLIC
+        "$<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>" )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     if ( TARGET SuiteSparse::SuiteSparseConfig_static )
         target_link_libraries ( CCOLAMD_static PUBLIC SuiteSparse::SuiteSparseConfig_static )
     else ( )
@@ -127,8 +137,10 @@ endif ( )
 
 # libm:
 if ( NOT WIN32 )
-    target_link_libraries ( CCOLAMD PRIVATE m )
-    if ( NOT NSTATIC )
+    if ( BUILD_SHARED_LIBS )
+        target_link_libraries ( CCOLAMD PRIVATE m )
+    endif ( )
+    if ( BUILD_STATIC_LIBS )
         set ( CCOLAMD_STATIC_LIBS "${CCOLAMD_STATIC_LIBS} -lm" )
         target_link_libraries ( CCOLAMD_static PUBLIC m )
     endif ( )
@@ -140,16 +152,19 @@ endif ( )
 
 include ( CMakePackageConfigHelpers )
 
-install ( TARGETS CCOLAMD
-    EXPORT CCOLAMDTargets
-    LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
-    ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
-    RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
-    PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    install ( TARGETS CCOLAMD
+        EXPORT CCOLAMDTargets
+        LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
+        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
+        RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     install ( TARGETS CCOLAMD_static
         EXPORT CCOLAMDTargets
-        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR} )
+        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
 endif ( )
 
 # create (temporary) export target file during build
@@ -204,10 +219,19 @@ if ( NOT MSVC )
     else ( )
         set ( includedir "\${prefix}/${SUITESPARSE_INCLUDEDIR}")
     endif ( )
+    if ( BUILD_SHARED_LIBS )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:CCOLAMD> )
+    else ( )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:CCOLAMD_static> )
+    endif ( )
     configure_file (
         Config/CCOLAMD.pc.in
-        CCOLAMD.pc
+        CCOLAMD.pc.out
         @ONLY
+        NEWLINE_STYLE LF )
+    file ( GENERATE
+        OUTPUT CCOLAMD.pc
+        INPUT ${CMAKE_CURRENT_BINARY_DIR}/CCOLAMD.pc.out
         NEWLINE_STYLE LF )
     install ( FILES
         ${CMAKE_CURRENT_BINARY_DIR}/CCOLAMD.pc
@@ -218,8 +242,7 @@ endif ( )
 # Demo library and programs
 #-------------------------------------------------------------------------------
 
-option ( DEMO "ON: Build the demo programs.  OFF (default): do not build the demo programs." off )
-if ( DEMO )
+if ( SUITESPARSE_DEMOS )
 
     #---------------------------------------------------------------------------
     # demo library
@@ -235,8 +258,13 @@ if ( DEMO )
     add_executable ( ccolamd_l_example "Demo/ccolamd_l_example.c" )
 
     # Libraries required for Demo programs
-    target_link_libraries ( ccolamd_example   PUBLIC CCOLAMD )
-    target_link_libraries ( ccolamd_l_example PUBLIC CCOLAMD )
+    if ( BUILD_SHARED_LIBS )
+        target_link_libraries ( ccolamd_example   PUBLIC CCOLAMD )
+        target_link_libraries ( ccolamd_l_example PUBLIC CCOLAMD )
+    else ( )
+        target_link_libraries ( ccolamd_example   PUBLIC CCOLAMD_static )
+        target_link_libraries ( ccolamd_l_example PUBLIC CCOLAMD_static )
+    endif ( )
 
 else ( )
 
@@ -248,6 +276,4 @@ endif ( )
 # report status
 #-------------------------------------------------------------------------------
 
-if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    include ( SuiteSparseReport )
-endif ( )
+include ( SuiteSparseReport )

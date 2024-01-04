@@ -2,7 +2,7 @@
 // LAGraph.h: user-visible include file for LAGraph
 //------------------------------------------------------------------------------
 
-// LAGraph, (c) 2019-2022 by The LAGraph Contributors, All Rights Reserved.
+// LAGraph, (c) 2019-2023 by The LAGraph Contributors, All Rights Reserved.
 // SPDX-License-Identifier: BSD-2-Clause
 //
 // For additional details (including references to third party source code and
@@ -37,10 +37,10 @@
 // See also the LAGraph_Version utility method, which returns these values.
 // These definitions are derived from LAGraph/CMakeLists.txt.
 
-#define LAGRAPH_DATE "Aug 2, 2023"
+#define LAGRAPH_DATE "Jan XX, 2024"
 #define LAGRAPH_VERSION_MAJOR  1
-#define LAGRAPH_VERSION_MINOR  0
-#define LAGRAPH_VERSION_UPDATE 2
+#define LAGRAPH_VERSION_MINOR  1
+#define LAGRAPH_VERSION_UPDATE 1
 
 //==============================================================================
 // include files and helper macros
@@ -98,6 +98,9 @@
 
 #if ( !LAGRAPH_VANILLA ) && defined ( GxB_SUITESPARSE_GRAPHBLAS )
     // use SuiteSparse, and its GxB* extensions
+    #if GxB_IMPLEMENTATION < GxB_VERSION (7,1,0)
+    #error "If using SuiteSparse::GraphBLAS, version 7.1.0 or later is required"
+    #endif
     #define LAGRAPH_SUITESPARSE 1
 #else
     // use any GraphBLAS library (possibly SuiteSparse) but with no GxB*
@@ -366,6 +369,15 @@
         GRB_CATCH (LG_GrB_Info) ;               \
     }                                           \
 }
+
+//==============================================================================
+// for C++ applications:
+//==============================================================================
+
+#if defined ( __cplusplus )
+extern "C"
+{
+#endif
 
 //==============================================================================
 // LAGraph memory management
@@ -2502,5 +2514,9 @@ int LAGr_TriangleCount
     LAGr_TriangleCount_Presort *presort,
     char *msg
 ) ;
+
+#if defined ( __cplusplus )
+}
+#endif
 
 #endif

@@ -40,11 +40,11 @@ library:
 
 # install only in SuiteSparse/lib and SuiteSparse/include
 local:
-	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=1 .. && cmake --build . --config Release -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DSUITESPARSE_LOCAL_INSTALL=1 .. && cmake --build . --config Release -j${JOBS} )
 
 # install only in /usr/local (default)
 global:
-	( cd build && cmake $(CMAKE_OPTIONS) -DLOCAL_INSTALL=0 .. && cmake --build . --config Release -j${JOBS} )
+	( cd build && cmake $(CMAKE_OPTIONS) -USUITESPARSE_PKGFILEDIR -DSUITESPARSE_LOCAL_INSTALL=0 .. && cmake --build . --config Release -j${JOBS} )
 
 debug:
 	( cd build && cmake $(CMAKE_OPTIONS) -DCMAKE_BUILD_TYPE=Debug .. && cmake --build . --config Debug -j${JOBS} )
@@ -52,11 +52,11 @@ debug:
 all: library
 
 demos: library
-	( cd build && cmake $(CMAKE_OPTIONS) -DDEMO=1 .. && cmake --build . --config Release -j${JOBS} )
-	- ./build/ccolamd_example > ./build/ccolamd_example.out
-	- diff --strip-trailing-cr ./Demo/ccolamd_example.out ./build/ccolamd_example.out
-	- ./build/ccolamd_l_example > ./build/ccolamd_l_example.out
-	- diff --strip-trailing-cr ./Demo/ccolamd_l_example.out ./build/ccolamd_l_example.out
+	( cd build && cmake $(CMAKE_OPTIONS) -DSUITESPARSE_DEMOS=1 .. && cmake --build . --config Release -j${JOBS} )
+	- ./build/ccolamd_example > ./build/ccolamd_example.out && ( command -v d2u && d2u ./build/ccolamd_example.out || true )
+	- diff ./Demo/ccolamd_example.out ./build/ccolamd_example.out
+	- ./build/ccolamd_l_example > ./build/ccolamd_l_example.out && ( command -v d2u && d2u ./build/ccolamd_l_example.out || true )
+	- diff ./Demo/ccolamd_l_example.out ./build/ccolamd_l_example.out
 
 # just compile after running cmake; do not run cmake again
 remake:

@@ -13,10 +13,10 @@
 # cmake 3.22 is required to find the BLAS in SuiteSparse_config
 cmake_minimum_required ( VERSION 3.22 )
 
-set ( PARU_DATE "Dec 20, 2022" )    # FIXME: pick a date
-set ( PARU_VERSION_MAJOR 1 CACHE STRING "" FORCE )
-set ( PARU_VERSION_MINOR 0 CACHE STRING "" FORCE )
-set ( PARU_VERSION_UPDATE 0 CACHE STRING "" FORCE )
+set ( PARU_DATE "Jan XX, 2024" )    # FIXME for 7.5.0
+set ( PARU_VERSION_MAJOR  0 CACHE STRING "" FORCE )
+set ( PARU_VERSION_MINOR  1 CACHE STRING "" FORCE )
+set ( PARU_VERSION_UPDATE 1 CACHE STRING "" FORCE )
 
 message ( STATUS "Building PARU version: v"
     ${PARU_VERSION_MAJOR}.
@@ -27,7 +27,7 @@ message ( STATUS "Building PARU version: v"
 # define the project
 #-------------------------------------------------------------------------------
 
-project ( paru
+project ( ParU
     VERSION "${PARU_VERSION_MAJOR}.${PARU_VERSION_MINOR}.${PARU_VERSION_UPDATE}" )
 
 #-------------------------------------------------------------------------------
@@ -41,52 +41,81 @@ set ( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 include ( SuiteSparsePolicy )
 
 #-------------------------------------------------------------------------------
-# find library dependencies
+# find languages
 #-------------------------------------------------------------------------------
 
 enable_language ( CXX )
 
-if ( DEMO )
+if ( SUITESPARSE_DEMOS )
     enable_language ( C )
 endif ( )
 
-option ( NOPENMP "ON: do not use OpenMP.  OFF (default): use OpenMP" OFF )
-if ( NOPENMP )
-    # OpenMP has been disabled
-    set ( OpenMP_CXX_FOUND OFF )
-    set ( OpenMP_C_FOUND OFF )
-else ( )
-    find_package ( OpenMP )
-    if ( OpenMP_CXX_FOUND AND OpenMP_CXX_VERSION VERSION_LESS 4.5 )
-        set ( NOPENMP ON )
+#-------------------------------------------------------------------------------
+# find OpenMP
+#-------------------------------------------------------------------------------
+
+option ( PARU_USE_OPENMP "ON: Use OpenMP in ParU if available.  OFF: Do not use OpenMP.  (Default: SUITESPARSE_USE_OPENMP)" ${SUITESPARSE_USE_OPENMP} )
+if ( NOT SUITESPARSE_USE_OPENMP )
+    set ( PARU_USE_OPENMP "OFF" CACHE STRING "" FORCE )
+endif ( )
+
+if ( PARU_USE_OPENMP )
+    # OpenMP 4.5 or later is required
+    if ( CMAKE_VERSION VERSION_LESS 3.24 )
+        find_package ( OpenMP COMPONENTS C CXX )
+    else ( )
+        find_package ( OpenMP COMPONENTS C CXX GLOBAL )
     endif ( )
-    if ( DEMO AND OpenMP_C_FOUND AND OpenMP_C_VERSION VERSION_LESS 4.5 )
-        set ( NOPENMP ON )
-    endif ( )
-    if ( NOPENMP )
-        message ( STATUS "Version of OpenMP is too old." )
+    if ( OpenMP_CXX_FOUND AND OpenMP_C_FOUND )
+        set ( PARU_HAS_OPENMP ON )
+        if (( OpenMP_CXX_VERSION VERSION_LESS 4.5 ) OR
+            ( OpenMP_C_VERSION   VERSION_LESS 4.5 ) )
+            message ( STATUS "ParU requires OpenMP 4.5 or later" )
+            set ( PARU_HAS_OPENMP OFF )
+            set ( OpenMP_CXX_FOUND OFF )
+            set ( OpenMP_C_FOUND OFF )
+        endif ( )
+    else ( )
+        # OpenMP has not been found
+        message ( STATUS "OpenMP not found" )
+        set ( PARU_HAS_OPENMP OFF )
         set ( OpenMP_CXX_FOUND OFF )
         set ( OpenMP_C_FOUND OFF )
     endif ( )
+else ( )
+    # OpenMP has not been requested
+    set ( PARU_HAS_OPENMP OFF )
+    set ( OpenMP_CXX_FOUND OFF )
+    set ( OpenMP_C_FOUND OFF )
+endif ( )
+message ( STATUS "ParU has OpenMP: ${PARU_HAS_OPENMP}" )
+
+# check for strict usage
+if ( SUITESPARSE_USE_STRICT AND PARU_USE_OPENMP AND NOT PARU_HAS_OPENMP )
+    message ( FATAL_ERROR "OpenMP 4.5 required for ParU but not found" )
 endif ( )
 
+#-------------------------------------------------------------------------------
+# find other dependencies
+#-------------------------------------------------------------------------------
+
 if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    find_package ( SuiteSparse_config 7.3.0
+    find_package ( SuiteSparse_config 7.5.0
         PATHS ${CMAKE_SOURCE_DIR}/../SuiteSparse_config/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::SuiteSparseConfig )
-        find_package ( SuiteSparse_config 7.3.0 REQUIRED )
+        find_package ( SuiteSparse_config 7.5.0 REQUIRED )
     endif ( )
 
-    find_package ( CHOLMOD 5.0.0
+    find_package ( CHOLMOD 5.1.1
         PATHS ${CMAKE_SOURCE_DIR}/../CHOLMOD/build NO_DEFAULT_PATH )
     if ( NOT CHOLMOD_FOUND )
-        find_package ( CHOLMOD 5.0.0 REQUIRED )
+        find_package ( CHOLMOD 5.1.1 REQUIRED )
     endif ( )
 
-    find_package ( UMFPACK 6.2.2
+    find_package ( UMFPACK 6.3.0
         PATHS ${CMAKE_SOURCE_DIR}/../UMFPACK/build NO_DEFAULT_PATH )
     if ( NOT CAMD_FOUND )
-        find_package ( UMFPACK 6.2.2 REQUIRED )
+        find_package ( UMFPACK 6.3.0 REQUIRED )
     endif ( )
 endif ( )
 
@@ -120,29 +149,10 @@ include_directories ( Source Include
 
 file ( GLOB PARU_SOURCES "Source/*.cpp" )
 
-add_library ( ParU SHARED ${PARU_SOURCES} )
+if ( BUILD_SHARED_LIBS )
+    add_library ( ParU SHARED ${PARU_SOURCES} )
 
-set_target_properties ( ParU PROPERTIES
-    VERSION ${PARU_VERSION_MAJOR}.${PARU_VERSION_MINOR}.${PARU_VERSION_UPDATE}
-    CXX_STANDARD 11
-    CXX_STANDARD_REQUIRED ON
-    OUTPUT_NAME paru
-    SOVERSION ${PARU_VERSION_MAJOR}
-    PUBLIC_HEADER "Include/ParU.hpp;Include/ParU_C.h;Include/ParU_definitions.h"
-    WINDOWS_EXPORT_ALL_SYMBOLS ON )
-
-target_include_directories ( ParU
-    INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
-              $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
-
-#-------------------------------------------------------------------------------
-# static paru library properties
-#-------------------------------------------------------------------------------
-
-if ( NOT NSTATIC )
-    add_library ( ParU_static STATIC ${PARU_SOURCES} )
-
-    set_target_properties ( ParU_static PROPERTIES
+    set_target_properties ( ParU PROPERTIES
         VERSION ${PARU_VERSION_MAJOR}.${PARU_VERSION_MINOR}.${PARU_VERSION_UPDATE}
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED ON
@@ -151,9 +161,36 @@ if ( NOT NSTATIC )
         PUBLIC_HEADER "Include/ParU.hpp;Include/ParU_C.h;Include/ParU_definitions.h"
         WINDOWS_EXPORT_ALL_SYMBOLS ON )
 
+    if ( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.25" )
+        set_target_properties ( ParU PROPERTIES EXPORT_NO_SYSTEM ON )
+    endif ( )
+
+    target_include_directories ( ParU
+        INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
+                  $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+endif ( )
+
+#-------------------------------------------------------------------------------
+# static paru library properties
+#-------------------------------------------------------------------------------
+
+if ( BUILD_STATIC_LIBS )
+    add_library ( ParU_static STATIC ${PARU_SOURCES} )
+
+    set_target_properties ( ParU_static PROPERTIES
+        CXX_STANDARD 11
+        CXX_STANDARD_REQUIRED ON
+        OUTPUT_NAME paru
+        PUBLIC_HEADER "Include/ParU.hpp;Include/ParU_C.h;Include/ParU_definitions.h"
+        WINDOWS_EXPORT_ALL_SYMBOLS ON )
+
     if ( MSVC )
         set_target_properties ( ParU_static PROPERTIES
             OUTPUT_NAME ParU_static )
+    endif ( )
+
+    if ( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.25" )
+        set_target_properties ( ParU_static PROPERTIES EXPORT_NO_SYSTEM ON )
     endif ( )
 
     target_include_directories ( ParU_static
@@ -162,14 +199,31 @@ if ( NOT NSTATIC )
 endif ( )
 
 #-------------------------------------------------------------------------------
+# additional definitions
+#-------------------------------------------------------------------------------
+
+if ( (APPLE OR WIN32) AND CMAKE_C_COMPILER_ID STREQUAL "GNU" )
+    # Some parallelization levels don't work correctly with GCC on Windows or
+    # Mac (because of emuTLS?). Omit them.
+    if ( BUILD_SHARED_LIBS )
+        target_compile_definitions (ParU PRIVATE PARU_1TASK )
+    endif ( )
+    if ( BUILD_STATIC_LIBS )
+        target_compile_definitions (ParU_static PRIVATE PARU_1TASK )
+    endif ( )
+endif ( )
+
+#-------------------------------------------------------------------------------
 # add the library dependencies
 #-------------------------------------------------------------------------------
 
 # suitesparseconfig:
-target_link_libraries ( ParU PRIVATE SuiteSparse::SuiteSparseConfig )
-target_include_directories ( ParU PUBLIC
-    "$<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>" )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    target_link_libraries ( ParU PRIVATE SuiteSparse::SuiteSparseConfig )
+    target_include_directories ( ParU PUBLIC
+        "$<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>" )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     if ( TARGET SuiteSparse::SuiteSparseConfig_static )
         target_link_libraries ( ParU_static PUBLIC SuiteSparse::SuiteSparseConfig_static )
     else ( )
@@ -177,32 +231,13 @@ if ( NOT NSTATIC )
     endif ( )
 endif ( )
 
-# OpenMP:
-if ( OpenMP_CXX_FOUND )
-    message ( STATUS "OpenMP C++ libraries:    ${OpenMP_CXX_LIBRARIES} ")
-    message ( STATUS "OpenMP C++ include:      ${OpenMP_CXX_INCLUDE_DIRS} ")
-    message ( STATUS "OpenMP C++ flags:        ${OpenMP_CXX_FLAGS} ")
-    target_link_libraries ( ParU PRIVATE OpenMP::OpenMP_CXX )
-    if ( NOT NSTATIC )
-        list ( APPEND PARU_STATIC_LIBS ${OpenMP_CXX_LIBRARIES} )
-        target_link_libraries ( ParU_static PUBLIC OpenMP::OpenMP_CXX )
-    endif ( )
-endif ( )
-
-# libm:
-if ( NOT MSVC )
-    target_link_libraries ( ParU PRIVATE m )
-    if ( NOT NSTATIC )
-        list ( APPEND PARU_STATIC_LIBS m )
-        target_link_libraries ( ParU_static PUBLIC m )
-    endif ( )
-endif ( )
-
 # umfpack:
-target_link_libraries ( ParU PRIVATE SuiteSparse::UMFPACK )
-target_include_directories ( ParU PUBLIC
-    "$<TARGET_PROPERTY:SuiteSparse::UMFPACK,INTERFACE_INCLUDE_DIRECTORIES>" )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    target_link_libraries ( ParU PRIVATE SuiteSparse::UMFPACK )
+    target_include_directories ( ParU PUBLIC
+        "$<TARGET_PROPERTY:SuiteSparse::UMFPACK,INTERFACE_INCLUDE_DIRECTORIES>" )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     if ( TARGET SuiteSparse::UMFPACK_static )
         target_link_libraries ( ParU_static PUBLIC SuiteSparse::UMFPACK_static )
     else ( )
@@ -210,22 +245,52 @@ if ( NOT NSTATIC )
     endif ( )
 endif ( )
 
+# cholmod:
+if ( BUILD_SHARED_LIBS )
+    target_include_directories ( ParU PUBLIC
+        "$<TARGET_PROPERTY:SuiteSparse::CHOLMOD,INTERFACE_INCLUDE_DIRECTORIES>" )
+endif ( )
+if ( BUILD_STATIC_LIBS )
+    target_include_directories ( ParU_static PUBLIC
+        "$<TARGET_PROPERTY:SuiteSparse::CHOLMOD,INTERFACE_INCLUDE_DIRECTORIES>" )
+endif ( )
+
+# OpenMP:
+if ( PARU_HAS_OPENMP )
+    message ( STATUS "OpenMP C++ libraries:    ${OpenMP_CXX_LIBRARIES} ")
+    message ( STATUS "OpenMP C++ include:      ${OpenMP_CXX_INCLUDE_DIRS} ")
+    message ( STATUS "OpenMP C++ flags:        ${OpenMP_CXX_FLAGS} ")
+    if ( BUILD_SHARED_LIBS )
+        target_link_libraries ( ParU PRIVATE OpenMP::OpenMP_CXX )
+    endif ( )
+    if ( BUILD_STATIC_LIBS )
+        list ( APPEND PARU_STATIC_LIBS ${OpenMP_CXX_LIBRARIES} )
+        target_link_libraries ( ParU_static PRIVATE OpenMP::OpenMP_CXX )
+    endif ( )
+endif ( )
+
+# libm:
+if ( NOT WIN32 )
+    if ( BUILD_SHARED_LIBS )
+        target_link_libraries ( ParU PRIVATE m )
+    endif ( )
+    if ( BUILD_STATIC_LIBS )
+        list ( APPEND PARU_STATIC_LIBS m )
+        target_link_libraries ( ParU_static PUBLIC m )
+    endif ( )
+endif ( )
+
 # BLAS:
 message ( STATUS "BLAS libraries:      ${BLAS_LIBRARIES} ")
 message ( STATUS "BLAS linker flags:   ${BLAS_LINKER_FLAGS} ")
-target_link_libraries ( ParU PRIVATE ${BLAS_LIBRARIES} )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    target_link_libraries ( ParU PRIVATE ${BLAS_LIBRARIES} )
+    target_include_directories ( ParU PRIVATE ${BLAS_INCLUDE_DIRS} )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     list ( APPEND PARU_STATIC_LIBS ${BLAS_LIBRARIES} )
     target_link_libraries ( ParU_static PUBLIC ${BLAS_LIBRARIES} )
-    include_directories ( ${BLAS_INCLUDE_DIRS} )
-endif ( )
-
-# cholmod:
-target_include_directories ( ParU PUBLIC
-    "$<TARGET_PROPERTY:SuiteSparse::CHOLMOD,INTERFACE_INCLUDE_DIRECTORIES>" )
-if ( NOT NSTATIC )
-    target_include_directories ( ParU_static PUBLIC
-        "$<TARGET_PROPERTY:SuiteSparse::CHOLMOD,INTERFACE_INCLUDE_DIRECTORIES>" )
+    target_include_directories ( ParU_static PRIVATE ${BLAS_INCLUDE_DIRS} )
 endif ( )
 
 #-------------------------------------------------------------------------------
@@ -234,14 +299,16 @@ endif ( )
 
 include ( CMakePackageConfigHelpers )
 
-install ( TARGETS ParU
-    EXPORT ParUTargets
-    LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
-    ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
-    RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
-    PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
+if ( BUILD_SHARED_LIBS )
+    install ( TARGETS ParU
+        EXPORT ParUTargets
+        LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
+        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
+        RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
+endif ( )
 
-if ( NOT NSTATIC )
+if ( BUILD_STATIC_LIBS )
     install ( TARGETS ParU_static
         EXPORT ParUTargets
         ARCHIVE       DESTINATION ${SUITESPARSE_LIBDIR}
@@ -327,10 +394,19 @@ if ( NOT MSVC )
     else ( )
         set ( includedir "\${prefix}/${SUITESPARSE_INCLUDEDIR}")
     endif ( )
+    if ( BUILD_SHARED_LIBS )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:ParU> )
+    else ( )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:ParU_static> )
+    endif ( )
     configure_file (
         Config/ParU.pc.in
-        ParU.pc
+        ParU.pc.out
         @ONLY
+        NEWLINE_STYLE LF )
+    file ( GENERATE
+        OUTPUT ParU.pc
+        INPUT ${CMAKE_CURRENT_BINARY_DIR}/ParU.pc.out
         NEWLINE_STYLE LF )
     install ( FILES
         ${CMAKE_CURRENT_BINARY_DIR}/ParU.pc
@@ -341,7 +417,7 @@ endif ( )
 # Demo library and programs
 #-------------------------------------------------------------------------------
 
-if ( DEMO )
+if ( SUITESPARSE_DEMOS )
 
     #---------------------------------------------------------------------------
     # demo library
@@ -353,25 +429,37 @@ if ( DEMO )
     # Demo programs
     #---------------------------------------------------------------------------
 
-    if ( OpenMP_CXX_FOUND )
-        add_executable ( paru_demo    "Demo/paru_demo.cpp"   )
+    if ( PARU_HAS_OPENMP )
+        add_executable ( paru_demo "Demo/paru_demo.cpp" )
+        if ( BUILD_SHARED_LIBS )
+            target_link_libraries ( paru_demo PUBLIC ParU )
+        else ( )
+            target_link_libraries ( paru_demo PUBLIC ParU_static )
+        endif ( )
         target_link_libraries ( paru_demo
-            PUBLIC ParU SuiteSparse::CHOLMOD SuiteSparse::UMFPACK OpenMP::OpenMP_CXX )
-    endif ( )
+            PUBLIC SuiteSparse::CHOLMOD SuiteSparse::UMFPACK OpenMP::OpenMP_CXX )
 
-    if ( OpenMP_C_FOUND )
-        add_executable ( paru_democ   "Demo/paru_democ.c"    )
+        add_executable ( paru_democ "Demo/paru_democ.c" )
+        if ( BUILD_SHARED_LIBS )
+            target_link_libraries ( paru_democ PUBLIC ParU )
+        else ( )
+            target_link_libraries ( paru_democ PUBLIC ParU_static )
+        endif ( )
         target_link_libraries ( paru_democ
-            PUBLIC ParU SuiteSparse::CHOLMOD SuiteSparse::UMFPACK OpenMP::OpenMP_C )
+            PUBLIC SuiteSparse::CHOLMOD SuiteSparse::UMFPACK OpenMP::OpenMP_C )
     endif ( )
 
     add_executable ( paru_simple  "Demo/paru_simple.cpp" )
-    target_link_libraries ( paru_simple
-        PUBLIC ParU SuiteSparse::CHOLMOD )
-
     add_executable ( paru_simplec "Demo/paru_simplec.c"  )
-    target_link_libraries ( paru_simplec
-        PUBLIC ParU SuiteSparse::CHOLMOD )
+    if ( BUILD_SHARED_LIBS )
+        target_link_libraries ( paru_simple PUBLIC ParU )
+        target_link_libraries ( paru_simplec PUBLIC ParU )
+    else ( )
+        target_link_libraries ( paru_simple PUBLIC ParU_static )
+        target_link_libraries ( paru_simplec PUBLIC ParU_static )
+    endif ( )
+    target_link_libraries ( paru_simple PUBLIC SuiteSparse::CHOLMOD )
+    target_link_libraries ( paru_simplec PUBLIC SuiteSparse::CHOLMOD )
 
 else ( )
 
@@ -383,6 +471,4 @@ endif ( )
 # report status
 #-------------------------------------------------------------------------------
 
-if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    include ( SuiteSparseReport )
-endif ( )
+include ( SuiteSparseReport )

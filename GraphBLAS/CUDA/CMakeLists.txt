@@ -10,7 +10,7 @@
 
 #-------------------------------------------------------------------------------
 
-cmake_minimum_required ( VERSION 3.19 )
+cmake_minimum_required ( VERSION 3.20 ) # GraphBLAS can be built stand-alone
 
 # CMake build for generating googletest c++ files that can be compiled and
 # executed in parallel.  Build can be customized to speed up development by
@@ -29,6 +29,7 @@ set ( CMAKE_CUDA_FLAGS "-cudart=static -lineinfo " )
 set ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++17 -fPIC " )
 
 add_compile_definitions ( GBNCPUFEAT )
+add_compile_definitions ( GBCUDA_CPLUSPLUS )
 
 message ( STATUS "C++ flags for CUDA: ${CMAKE_CXX_FLAGS}" )
 
@@ -54,6 +55,7 @@ set ( GRAPHBLAS_CUDA_INCLUDES
         ../Source/Shared
         ../Source/Template
         ../Source/Factories
+        Template
         ../Include
         ../CUDA )
 
@@ -63,17 +65,29 @@ message ( STATUS "GraphBLAS CUDA includes: ${GRAPHBLAS_CUDA_INCLUDES}" )
 # GraphBLAS_CUDA properties
 #-------------------------------------------------------------------------------
 
-target_include_directories(GraphBLAS_CUDA PRIVATE
-        ${CUDAToolkit_INCLUDE_DIRS}
+target_include_directories ( GraphBLAS_CUDA PRIVATE
         ${GRAPHBLAS_CUDA_INCLUDES})
-set_target_properties(GraphBLAS_CUDA PROPERTIES POSITION_INDEPENDENT_CODE ON)
-set_target_properties(GraphBLAS_CUDA PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties ( GraphBLAS_CUDA PROPERTIES POSITION_INDEPENDENT_CODE ON )
+set_target_properties ( GraphBLAS_CUDA PROPERTIES CUDA_SEPARABLE_COMPILATION ON )
 # FIXME: use SUITESPARSE_CUDA_ARCHITECTURES
-set_target_properties(GraphBLAS_CUDA PROPERTIES CUDA_ARCHITECTURES "52;75;80" )
+set_target_properties ( GraphBLAS_CUDA PROPERTIES CUDA_ARCHITECTURES "52;75;80" )
 
-target_link_libraries(GraphBLAS_CUDA CUDA::nvrtc CUDA::cudart_static CUDA::cuda_driver CUDA::nvToolsExt )
+target_link_libraries ( GraphBLAS_CUDA PRIVATE CUDA::nvrtc CUDA::cudart_static CUDA::cuda_driver )
 
-target_compile_definitions ( GraphBLAS_CUDA PUBLIC "SUITESPARSE_CUDA" )
+if ( TARGET CUDA::nvToolsExt )
+    target_link_libraries ( GraphBLAS_CUDA PRIVATE CUDA::nvToolsExt )
+endif ( )
+
+if ( TARGET CUDA::nvtx3 )
+    target_link_libraries ( GraphBLAS_CUDA PRIVATE CUDA::nvtx3 )
+    target_compile_definitions ( GraphBLAS_CUDA PRIVATE GBNVTX )
+endif ( )
+
+target_compile_definitions ( GraphBLAS_CUDA PUBLIC "GRAPHBLAS_HAS_CUDA" )
+
+if ( OpenMP_CXX_FOUND )
+    target_include_directories ( GraphBLAS_CUDA PRIVATE OpenMP::OpenMP_CXX )
+endif ( )
 
 target_include_directories ( GraphBLAS_CUDA
     INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -148,6 +162,8 @@ endif ( )
 #-------------------------------------------------------------------------------
 # test suite for the CUDA kernels
 #-------------------------------------------------------------------------------
+
+if ( 0 )
 
 # 1. Execute enumify/stringify/jitify logic to compile ptx kernels and
 # compile/link w/ relevant *.cu files.
@@ -243,26 +259,27 @@ set_target_properties(graphblascuda_test PROPERTIES CUDA_ARCHITECTURES "52;75;80
 
 include(GoogleTest)
 
-add_dependencies(graphblascuda_test GraphBLAS)
-add_dependencies(graphblascuda_test GraphBLAS_CUDA)
-add_dependencies(graphblascuda_test gtest_main)
-add_dependencies(graphblascuda_test rmm_wrap)
+if ( ENABLE_SHARED_LIBS )
+    target_link_libraries ( graphblascuda_test PUBLIC GraphBLAS  )
+else ( )
+    target_link_libraries ( graphblascuda_test PUBLIC GraphBLAS_static )
+endif ( )
 
-target_link_libraries(graphblascuda_test
-        PUBLIC
-        GraphBLAS
-        GraphBLAS_CUDA
-        rmm_wrap
-        CUDA::cudart_static
-        CUDA::nvrtc
-        ${ADDITIONAL_DEPS}
-        PRIVATE
-        gtest_main)
+target_link_libraries ( graphblascuda_test
+    PUBLIC
+    GraphBLAS_CUDA
+    RMM_wrap
+    CUDA::cudart_static
+    CUDA::nvrtc
+    ${ADDITIONAL_DEPS}
+    PRIVATE
+    gtest_main )
 
-target_include_directories(graphblascuda_test
-        PUBLIC
-        rmm_wrap
-        ${ADDITIONAL_INCLUDES}
-        ${CUDAToolkit_INCLUDE_DIRS}
-        ${GRAPHBLAS_CUDA_INCLUDES})
+target_include_directories ( graphblascuda_test
+    PUBLIC
+    rmm_wrap
+    ${ADDITIONAL_INCLUDES}
+    ${CUDAToolkit_INCLUDE_DIRS}
+    ${GRAPHBLAS_CUDA_INCLUDES} )
 
+endif ( )

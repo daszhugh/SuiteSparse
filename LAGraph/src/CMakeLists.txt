@@ -17,52 +17,59 @@ include_directories ( utility )
 
 file ( GLOB LAGRAPH_LIB_SOURCES "utility/*.c" "algorithm/*.c" )
 
-if ( WIN32 )
-    set ( M_LIB "" )
-else ( )
-    set ( M_LIB "m" )
-endif ( )
-
 #-------------------------------------------------------------------------------
 # dynamic lagraph library properties
 #-------------------------------------------------------------------------------
 
-add_library ( LAGraph SHARED ${LAGRAPH_LIB_SOURCES} )
-SET_TARGET_PROPERTIES ( LAGraph PROPERTIES
-    VERSION ${LAGraph_VERSION_MAJOR}.${LAGraph_VERSION_MINOR}.${LAGraph_VERSION_SUB}
-    SOVERSION ${LAGraph_VERSION_MAJOR}
-    OUTPUT_NAME lagraph
-    C_STANDARD_REQUIRED ON
-    C_STANDARD 11
-    PUBLIC_HEADER "include/LAGraph.h"
-    RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/dlls )
-target_link_libraries ( LAGraph PRIVATE GraphBLAS::GraphBLAS ${M_LIB} )
+if ( BUILD_SHARED_LIBS )
+    add_library ( LAGraph SHARED ${LAGRAPH_LIB_SOURCES} )
+    set_target_properties ( LAGraph PROPERTIES
+        VERSION ${LAGraph_VERSION_MAJOR}.${LAGraph_VERSION_MINOR}.${LAGraph_VERSION_SUB}
+        SOVERSION ${LAGraph_VERSION_MAJOR}
+        OUTPUT_NAME lagraph
+        C_STANDARD_REQUIRED ON
+        C_STANDARD 11
+        PUBLIC_HEADER "include/LAGraph.h"
+        RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/dlls )
 
-target_include_directories ( LAGraph PUBLIC
-    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+    if ( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.25" )
+        set_target_properties ( LAGraph PROPERTIES EXPORT_NO_SYSTEM ON )
+    endif ( )
 
-target_compile_definitions ( LAGraph PRIVATE LG_LIBRARY )
-target_compile_definitions ( LAGraph PUBLIC LG_DLL )
-# install ( FILES ${LAGRAPH_INCLUDE} DESTINATION include)
+    target_link_libraries ( LAGraph PRIVATE GraphBLAS::GraphBLAS )
+    if ( NOT NO_LIBM )
+        target_link_libraries ( LAGraph PRIVATE "m" )
+    endif ( )
+
+    target_include_directories ( LAGraph PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+
+    target_compile_definitions ( LAGraph PRIVATE LG_LIBRARY )
+    target_compile_definitions ( LAGraph PUBLIC LG_DLL )
+    # install ( FILES ${LAGRAPH_INCLUDE} DESTINATION include)
+endif ( )
 
 #-------------------------------------------------------------------------------
 # static lagraph library properties
 #-------------------------------------------------------------------------------
 
-if ( NOT NSTATIC )
+if ( BUILD_STATIC_LIBS )
     add_library ( LAGraph_static STATIC ${LAGRAPH_LIB_SOURCES} )
     SET_TARGET_PROPERTIES ( LAGraph_static PROPERTIES
-        VERSION ${LAGraph_VERSION_MAJOR}.${LAGraph_VERSION_MINOR}.${LAGraph_VERSION_SUB}
         OUTPUT_NAME lagraph
         POSITION_INDEPENDENT_CODE OFF
-        SOVERSION ${LAGraph_VERSION_MAJOR}
         C_STANDARD_REQUIRED ON
-        C_STANDARD 11 )
+        C_STANDARD 11
+        PUBLIC_HEADER "include/LAGraph.h" )
 
     if ( MSVC )
         set_target_properties ( LAGraph_static PROPERTIES
             OUTPUT_NAME lagraph_static )
+    endif ( )
+
+    if ( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.25" )
+        set_target_properties ( LAGraph_static PROPERTIES EXPORT_NO_SYSTEM ON )
     endif ( )
 
     if ( TARGET GraphBLAS::GraphBLAS_static )
@@ -70,7 +77,9 @@ if ( NOT NSTATIC )
     else ( )
         target_link_libraries ( LAGraph_static PUBLIC GraphBLAS::GraphBLAS )
     endif ( )
-    target_link_libraries ( LAGraph_static PUBLIC ${M_LIB} )
+    if ( NOT NO_LIBM )
+        target_link_libraries ( LAGraph_static PUBLIC "m" )
+    endif ( )
 
     target_include_directories ( LAGraph_static PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -81,10 +90,12 @@ endif ( )
 # add OpenMP
 #-------------------------------------------------------------------------------
 
-if ( OPENMP_C_FOUND )
-    target_link_libraries ( LAGraph PRIVATE OpenMP::OpenMP_C )
-    if ( NOT NSTATIC )
-        target_link_libraries ( LAGraph_static PUBLIC OpenMP::OpenMP_C )
+if ( OpenMP_C_FOUND )
+    if ( BUILD_SHARED_LIBS )
+        target_link_libraries ( LAGraph PRIVATE OpenMP::OpenMP_C )
+    endif ( )
+    if ( BUILD_STATIC_LIBS )
+        target_link_libraries ( LAGraph_static PRIVATE OpenMP::OpenMP_C )
     endif ( )
 endif ( )
 
@@ -92,6 +103,7 @@ endif ( )
 # applications
 #-------------------------------------------------------------------------------
 
-add_subdirectory ( test )
-add_subdirectory ( benchmark )
-
+if ( BUILD_TESTING )
+    add_subdirectory ( test )
+    add_subdirectory ( benchmark )
+endif ( )

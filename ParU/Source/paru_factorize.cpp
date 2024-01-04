@@ -13,6 +13,8 @@
  *
  * @author Aznaveh
  */
+#include <algorithm>
+
 #include "paru_internal.hpp"
 
 //------------------------------------------------------------------------------
@@ -92,7 +94,6 @@ ParU_Ret paru_exec_tasks_seq(int64_t t, int64_t *task_num_child, paru_work *Work
 ParU_Ret paru_exec_tasks(int64_t t, int64_t *task_num_child, int64_t &chain_task,
                          paru_work *Work, ParU_Numeric *Num)
 {
-    DEBUGLEVEL(0);    // FIXME
     ParU_Symbolic *Sym = Work->Sym;
     int64_t *task_parent = Sym->task_parent;
     int64_t daddy = task_parent[t];
@@ -191,7 +192,6 @@ ParU_Ret paru_exec_tasks(int64_t t, int64_t *task_num_child, int64_t &chain_task
 ParU_Ret ParU_Factorize(cholmod_sparse *A, ParU_Symbolic *Sym,
                         ParU_Numeric **Num_handle, ParU_Control *user_Control)
 {
-    DEBUGLEVEL(0);    // FIXME
     PARU_DEFINE_PRLEVEL;
 #ifndef NTIME
     double my_start_time = PARU_OPENMP_GET_WTIME;
@@ -243,10 +243,10 @@ ParU_Ret ParU_Factorize(cholmod_sparse *A, ParU_Symbolic *Sym,
         if (worthwhile_dgemm < 0) my_Control.worthwhile_dgemm = 512;
         int64_t worthwhile_trsm = my_Control.worthwhile_trsm;
         if (worthwhile_trsm < 0) my_Control.worthwhile_trsm = 4096;
-        int64_t max_threads = PARU_OPENMP_MAX_THREADS;
+        int32_t max_threads = PARU_OPENMP_MAX_THREADS;
         if (my_Control.paru_max_threads > 0)
             my_Control.paru_max_threads =
-                MIN(max_threads, my_Control.paru_max_threads);
+                std::min(max_threads, my_Control.paru_max_threads);
         else
             my_Control.paru_max_threads = max_threads;
 
@@ -341,11 +341,13 @@ ParU_Ret ParU_Factorize(cholmod_sparse *A, ParU_Symbolic *Sym,
     // execute the task tree
     //--------------------------------------------------------------------------
 
-    if ((int64_t)task_Q.size() * 2 > Control->paru_max_threads)
+#if ! defined ( PARU_1TASK )
+    // The parallel factorization gets stuck intermittently on Windows or Mac
+    // with gcc, so always use the sequential factorization in that case.
+    if (task_Q.size() * 2 > Control->paru_max_threads)
     {
-        printf ("Parallel:\n") ;    // FIXME
         PRLEVEL(1, ("Parallel\n"));
-        // chekcing user input
+        // checking user input
         PRLEVEL(1, ("Control: max_th=" LD " scale=" LD " piv_toler=%lf "
                     "diag_toler=%lf trivial =" LD " worthwhile_dgemm=" LD " "
                     "worthwhile_trsm=" LD "\n",
@@ -368,13 +370,11 @@ ParU_Ret ParU_Factorize(cholmod_sparse *A, ParU_Symbolic *Sym,
         int64_t start = 0;
         PRLEVEL(
             1, ("%% size=" LD ", steps =" LD ", stages =" LD "\n", size, steps, stages));
-        printf ("stages " LD "\n", stages) ;    // FIXME
 
         for (int64_t ii = 0; ii < stages; ii++)
         {
             if (start >= size) break;
             int64_t end = start + steps > size ? size : start + steps;
-            printf ("stage " LD "\n", ii) ; // FIXME
             PRLEVEL(1, ("%% doing Queue tasks <" LD "," LD ">\n", start, end));
             #pragma omp parallel proc_bind(spread)                             \
             num_threads(Control->paru_max_threads)
@@ -412,7 +412,6 @@ ParU_Ret ParU_Factorize(cholmod_sparse *A, ParU_Symbolic *Sym,
         {
             #pragma omp atomic write
             Work->naft = 1;
-            printf ("remaining " LD "\n", chain_task) ; // FIXME
             PRLEVEL(1, ("Chain_taskd " LD " has remained\n", chain_task));
             info = paru_exec_tasks_seq(chain_task, task_num_child, Work, Num);
         }
@@ -433,6 +432,7 @@ ParU_Ret ParU_Factorize(cholmod_sparse *A, ParU_Symbolic *Sym,
         }
     }
     else
+#endif
     {
         PRLEVEL(1, ("Sequential\n"));
         Work->naft = 1;
@@ -455,7 +455,6 @@ ParU_Ret ParU_Factorize(cholmod_sparse *A, ParU_Symbolic *Sym,
     // finalize the permutation
     //--------------------------------------------------------------------------
 
-    printf ("finalize permutation\n") ; // FIXME
     PRLEVEL(1, ("finalize permutation\n"));
     info = paru_finalize_perm(Sym, Num);  // to form the final permutation
     paru_free_work(Sym, Work);   // free the work DS
@@ -497,14 +496,14 @@ ParU_Ret ParU_Factorize(cholmod_sparse *A, ParU_Symbolic *Sym,
                 int64_t col1 = Super[f];
                 int64_t col2 = Super[f + 1];
                 int64_t fp = col2 - col1;
-                max_rc = MAX(max_rc, rowCount);
-                max_cc = MAX(max_cc, colCount + fp);
+                max_rc = std::max(max_rc, rowCount);
+                max_cc = std::max(max_cc, colCount + fp);
                 double *X = LUs[f].p;
                 for (int64_t i = 0; i < fp; i++)
                 {
                     double udiag = fabs(X[rowCount * i + i]);
-                    min_udiag = MIN(min_udiag, udiag);
-                    max_udiag = MAX(max_udiag, udiag);
+                    min_udiag = std::min(min_udiag, udiag);
+                    max_udiag = std::max(max_udiag, udiag);
                 }
             }
         }
@@ -521,8 +520,8 @@ ParU_Ret ParU_Factorize(cholmod_sparse *A, ParU_Symbolic *Sym,
                 int64_t col1 = Super[f];
                 int64_t col2 = Super[f + 1];
                 int64_t fp = col2 - col1;
-                max_rc = MAX(max_rc, rowCount);
-                max_cc = MAX(max_cc, colCount + fp);
+                max_rc = std::max(max_rc, rowCount);
+                max_cc = std::max(max_cc, colCount + fp);
             }
 
             for (int64_t f = 0; f < nf; f++)
@@ -538,8 +537,8 @@ ParU_Ret ParU_Factorize(cholmod_sparse *A, ParU_Symbolic *Sym,
                 for (int64_t i = 0; i < fp; i++)
                 {
                     double udiag = fabs(X[rowCount * i + i]);
-                    min_udiag = MIN(min_udiag, udiag);
-                    max_udiag = MAX(max_udiag, udiag);
+                    min_udiag = std::min(min_udiag, udiag);
+                    max_udiag = std::max(max_udiag, udiag);
                 }
             }
         }

@@ -10,11 +10,11 @@
 # get the version
 #-------------------------------------------------------------------------------
 
-cmake_minimum_required ( VERSION 3.20 )
+cmake_minimum_required ( VERSION 3.22 )
 
-set ( AMD_DATE "Sept 18, 2023" )
+set ( AMD_DATE "Jan XX, 2024" )     # FIXME for 7.5.0
 set ( AMD_VERSION_MAJOR 3 CACHE STRING "" FORCE )
-set ( AMD_VERSION_MINOR 2 CACHE STRING "" FORCE )
+set ( AMD_VERSION_MINOR 3 CACHE STRING "" FORCE )
 set ( AMD_VERSION_SUB   1 CACHE STRING "" FORCE )
 
 message ( STATUS "Building AMD version: v"
@@ -26,7 +26,7 @@ message ( STATUS "Building AMD version: v"
 # define the project
 #-------------------------------------------------------------------------------
 
-project ( amd
+project ( AMD
     VERSION "${AMD_VERSION_MAJOR}.${AMD_VERSION_MINOR}.${AMD_VERSION_SUB}"
     LANGUAGES C )
 
@@ -39,7 +39,7 @@ set ( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 
 include ( SuiteSparsePolicy )
 
-if ( NOT NFORTRAN )
+if ( SUITESPARSE_HAS_FORTRAN )
     # Fortan is available and enabled
     enable_language ( Fortran )
 endif ( )
@@ -49,10 +49,10 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    find_package ( SuiteSparse_config 7.2.0
+    find_package ( SuiteSparse_config 7.5.0
         PATHS ${CMAKE_SOURCE_DIR}/../SuiteSparse_config/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::SuiteSparseConfig )
-        find_package ( SuiteSparse_config 7.2.0 REQUIRED )
+        find_package ( SuiteSparse_config 7.5.0 REQUIRED )
     endif ( )
 endif ( )
 
@@ -75,42 +75,51 @@ include_directories ( Source Include )
 # dynamic amd library properties
 #-------------------------------------------------------------------------------
 
-if ( NOT NFORTRAN )
+if ( SUITESPARSE_HAS_FORTRAN )
     file ( GLOB AMD_SOURCES "Source/*.c" "Source/*.f" )
 else ( )
     file ( GLOB AMD_SOURCES "Source/*.c" )
 endif ( )
 
-add_library ( AMD SHARED ${AMD_SOURCES} )
-set_target_properties ( AMD PROPERTIES
-    VERSION ${AMD_VERSION_MAJOR}.${AMD_VERSION_MINOR}.${AMD_VERSION_SUB}
-    C_STANDARD 11
-    C_STANDARD_REQUIRED ON
-    OUTPUT_NAME amd
-    SOVERSION ${AMD_VERSION_MAJOR}
-    PUBLIC_HEADER "Include/amd.h"
-    WINDOWS_EXPORT_ALL_SYMBOLS ON )
+if ( BUILD_SHARED_LIBS )
+    add_library ( AMD SHARED ${AMD_SOURCES} )
+    set_target_properties ( AMD PROPERTIES
+        VERSION ${AMD_VERSION_MAJOR}.${AMD_VERSION_MINOR}.${AMD_VERSION_SUB}
+        C_STANDARD 11
+        C_STANDARD_REQUIRED ON
+        OUTPUT_NAME amd
+        SOVERSION ${AMD_VERSION_MAJOR}
+        PUBLIC_HEADER "Include/amd.h"
+        WINDOWS_EXPORT_ALL_SYMBOLS ON )
 
-target_include_directories ( AMD
-    INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
-              $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+    if ( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.25" )
+        set_target_properties ( AMD PROPERTIES EXPORT_NO_SYSTEM ON )
+    endif ( )
+
+    target_include_directories ( AMD
+        INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Include>
+                  $<INSTALL_INTERFACE:${SUITESPARSE_INCLUDEDIR}> )
+endif ( )
 
 #-------------------------------------------------------------------------------
 # static amd library properties
 #-------------------------------------------------------------------------------
 
-if ( NOT NSTATIC )
+if ( BUILD_STATIC_LIBS )
     add_library ( AMD_static STATIC ${AMD_SOURCES} )
     set_target_properties ( AMD_static PROPERTIES
-        VERSION ${AMD_VERSION_MAJOR}.${AMD_VERSION_MINOR}.${AMD_VERSION_SUB}
         C_STANDARD 11
         C_STANDARD_REQUIRED ON
         OUTPUT_NAME amd
-        SOVERSION ${AMD_VERSION_MAJOR} )
+        PUBLIC_HEADER "Include/amd.h" )
 
     if ( MSVC )
         set_target_properties ( AMD_static PROPERTIES
             OUTPUT_NAME amd_static )
+    endif ( )
+
+    if ( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.25" )
+        set_target_properties ( AMD_static PROPERTIES EXPORT_NO_SYSTEM ON )
     endif ( )
 
     target_include_directories ( AMD_static
@@ -124,10 +133,12 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 # SuiteSparseConfig:
-target_link_libraries ( AMD PRIVATE SuiteSparse::SuiteSparseConfig )
-target_include_directories ( AMD PUBLIC
-    "$<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>" )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    target_link_libraries ( AMD PRIVATE SuiteSparse::SuiteSparseConfig )
+    target_include_directories ( AMD PUBLIC
+        "$<TARGET_PROPERTY:SuiteSparse::SuiteSparseConfig,INTERFACE_INCLUDE_DIRECTORIES>" )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     if ( TARGET SuiteSparse::SuiteSparseConfig_static )
         target_link_libraries ( AMD_static PUBLIC SuiteSparse::SuiteSparseConfig_static )
     else ( )
@@ -137,8 +148,10 @@ endif ( )
 
 # libm:
 if ( NOT WIN32 )
-    target_link_libraries ( AMD PRIVATE m )
-    if ( NOT NSTATIC )
+    if ( BUILD_SHARED_LIBS )
+        target_link_libraries ( AMD PRIVATE m )
+    endif ( )
+    if ( BUILD_STATIC_LIBS )
         set ( AMD_STATIC_LIBS "${AMD_STATIC_LIBS} -lm" )
         target_link_libraries ( AMD_static PUBLIC m )
     endif ( )
@@ -150,16 +163,19 @@ endif ( )
 
 include ( CMakePackageConfigHelpers )
 
-install ( TARGETS AMD
-    EXPORT AMDTargets
-    LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
-    ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
-    RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
-    PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
-if ( NOT NSTATIC )
+if ( BUILD_SHARED_LIBS )
+    install ( TARGETS AMD
+        EXPORT AMDTargets
+        LIBRARY DESTINATION ${SUITESPARSE_LIBDIR}
+        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
+        RUNTIME DESTINATION ${SUITESPARSE_BINDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
+endif ( )
+if ( BUILD_STATIC_LIBS )
     install ( TARGETS AMD_static
         EXPORT AMDTargets
-        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR} )
+        ARCHIVE DESTINATION ${SUITESPARSE_LIBDIR}
+        PUBLIC_HEADER DESTINATION ${SUITESPARSE_INCLUDEDIR} )
 endif ( )
 
 # create (temporary) export target file during build
@@ -214,10 +230,19 @@ if ( NOT MSVC )
     else ( )
         set ( includedir "\${prefix}/${SUITESPARSE_INCLUDEDIR}")
     endif ( )
+    if ( BUILD_SHARED_LIBS )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:AMD> )
+    else ( )
+        set ( SUITESPARSE_LIB_BASE_NAME $<TARGET_FILE_BASE_NAME:AMD_static> )
+    endif ( )
     configure_file (
         Config/AMD.pc.in
-        AMD.pc
+        AMD.pc.out
         @ONLY
+        NEWLINE_STYLE LF )
+    file ( GENERATE
+        OUTPUT AMD.pc
+        INPUT ${CMAKE_CURRENT_BINARY_DIR}/AMD.pc.out
         NEWLINE_STYLE LF )
     install ( FILES
         ${CMAKE_CURRENT_BINARY_DIR}/AMD.pc
@@ -228,8 +253,7 @@ endif ( )
 # Demo library and programs
 #-------------------------------------------------------------------------------
 
-option ( DEMO "ON: Build the demo programs.  OFF (default): do not build the demo programs." off )
-if ( DEMO )
+if ( SUITESPARSE_DEMOS )
 
     #---------------------------------------------------------------------------
     # demo library
@@ -245,19 +269,30 @@ if ( DEMO )
     add_executable ( amd_l_demo    "Demo/amd_l_demo.c" )
     add_executable ( amd_demo2     "Demo/amd_demo2.c" )
     add_executable ( amd_simple    "Demo/amd_simple.c" )
-    if ( NOT NFORTRAN )
+    if ( SUITESPARSE_HAS_FORTRAN )
         add_executable ( amd_f77demo   "Demo/amd_f77demo.f" )
         add_executable ( amd_f77simple "Demo/amd_f77simple.f" )
     endif ( )
 
     # Libraries required for Demo programs
-    target_link_libraries ( amd_demo      PUBLIC AMD )
-    target_link_libraries ( amd_l_demo    PUBLIC AMD )
-    target_link_libraries ( amd_demo2     PUBLIC AMD )
-    target_link_libraries ( amd_simple    PUBLIC AMD )
-    if ( NOT NFORTRAN )
-        target_link_libraries ( amd_f77demo   PUBLIC AMD )
-        target_link_libraries ( amd_f77simple PUBLIC AMD )
+    if ( BUILD_SHARED_LIBS )
+        target_link_libraries ( amd_demo PUBLIC AMD )
+        target_link_libraries ( amd_l_demo PUBLIC AMD )
+        target_link_libraries ( amd_demo2 PUBLIC AMD )
+        target_link_libraries ( amd_simple PUBLIC AMD )
+        if ( SUITESPARSE_HAS_FORTRAN )
+            target_link_libraries ( amd_f77demo PUBLIC AMD )
+            target_link_libraries ( amd_f77simple PUBLIC AMD )
+        endif ( )
+    else ( )
+        target_link_libraries ( amd_demo PUBLIC AMD_static )
+        target_link_libraries ( amd_l_demo PUBLIC AMD_static )
+        target_link_libraries ( amd_demo2 PUBLIC AMD_static )
+        target_link_libraries ( amd_simple PUBLIC AMD_static )
+        if ( SUITESPARSE_HAS_FORTRAN )
+            target_link_libraries ( amd_f77demo PUBLIC AMD_static )
+            target_link_libraries ( amd_f77simple PUBLIC AMD_static )
+        endif ( )
     endif ( )
 
 else ( )
@@ -270,6 +305,4 @@ endif ( )
 # report status
 #-------------------------------------------------------------------------------
 
-if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    include ( SuiteSparseReport )
-endif ( )
+include ( SuiteSparseReport )

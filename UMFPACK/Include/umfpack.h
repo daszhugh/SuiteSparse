@@ -2,7 +2,7 @@
 // UMFPACK/Include/umfpack.h: include file for UMFPACK
 //------------------------------------------------------------------------------
 
-// UMFPACK, Copyright (c) 2005-2023, Timothy A. Davis, All Rights Reserved.
+// UMFPACK, Copyright (c) 2005-2024, Timothy A. Davis, All Rights Reserved.
 // SPDX-License-Identifier: GPL-2.0+
 
 //------------------------------------------------------------------------------
@@ -17,14 +17,6 @@
 
 #ifndef UMFPACK_H
 #define UMFPACK_H
-
-/* -------------------------------------------------------------------------- */
-/* Make it easy for C++ programs to include UMFPACK */
-/* -------------------------------------------------------------------------- */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 //------------------------------------------------------------------------------
 // include files for other packages: SuiteSparse_config and AMD
@@ -48,7 +40,7 @@ extern "C" {
 /* -------------------------------------------------------------------------- */
 
 #define UMFPACK_COPYRIGHT \
-"UMFPACK:  Copyright (c) 2005-2023 by Timothy A. Davis.  All Rights Reserved.\n"
+"UMFPACK:  Copyright (c) 2005-2024 by Timothy A. Davis.  All Rights Reserved.\n"
 
 #define UMFPACK_LICENSE_PART1 \
 "\nUMFPACK License: SPDX-License-Identifier: GPL-2.0+\n" \
@@ -82,13 +74,24 @@ extern "C" {
  * below.
  */
 
-#define UMFPACK_DATE "Oct 23, 2023"
+#define UMFPACK_DATE "Jan XX, 2024"
 #define UMFPACK_MAIN_VERSION   6
-#define UMFPACK_SUB_VERSION    2
-#define UMFPACK_SUBSUB_VERSION 2
+#define UMFPACK_SUB_VERSION    3
+#define UMFPACK_SUBSUB_VERSION 1
 
-#define UMFPACK_VER_CODE(main,sub) ((main) * 1000 + (sub))
-#define UMFPACK_VER UMFPACK_VER_CODE(UMFPACK_MAIN_VERSION,UMFPACK_SUB_VERSION)
+#define UMFPACK_VER_CODE(main,sub) SUITESPARSE_VER_CODE(main,sub)
+#define UMFPACK_VER UMFPACK_VER_CODE(6,3)
+
+#define UMFPACK__VERSION SUITESPARSE__VERCODE(6,3,1)
+#if !defined (SUITESPARSE__VERSION) || \
+    (SUITESPARSE__VERSION < SUITESPARSE__VERCODE(7,5,0))
+#error "UMFPACK 6.3.1 requires SuiteSparse_config 7.5.0 or later"
+#endif
+
+#if !defined (AMD__VERSION) || \
+    (AMD__VERSION < SUITESPARSE__VERCODE(3,3,1))
+#error "UMFPACK 6.3.1 requires AMD 3.1.1 or later"
+#endif
 
 // user code should not directly use GB_STR or GB_XSTR
 // GB_STR: convert the content of x into a string "x"
@@ -381,6 +384,20 @@ extern "C" {
 //==============================================================================
 //==== Primary routines ========================================================
 //==============================================================================
+
+/* -------------------------------------------------------------------------- */
+/* Make it easy for C++ programs to include UMFPACK */
+/* -------------------------------------------------------------------------- */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+//------------------------------------------------------------------------------
+// umfpack_version
+//------------------------------------------------------------------------------
+
+void umfpack_version (int version [3]) ;
 
 //------------------------------------------------------------------------------
 // umfpack_symbolic

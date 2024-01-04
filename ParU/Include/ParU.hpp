@@ -2,7 +2,7 @@
 // ======================= ParU.hpp ===========================================/
 // ============================================================================/
 
-// ParU, Copyright (c) 2022, Mohsen Aznaveh and Timothy A. Davis,
+// ParU, Copyright (c) 2023, Mohsen Aznaveh and Timothy A. Davis,
 // All Rights Reserved.
 // SPDX-License-Identifier: GNU GPL 3.0
 
@@ -237,7 +237,7 @@ struct ParU_Control
     int64_t trivial = 4; //dgemms with sizes less than trivial doesn't call BLAS
     int64_t worthwhile_dgemm = 512;  // dgemms bigger than worthwhile are tasked
     int64_t worthwhile_trsm = 4096;  // trsm bigger than worthwhile are tasked
-    int64_t paru_max_threads = 0;  //It will be initialized with omp_max_threads
+    int32_t paru_max_threads = 0;  //It will be initialized with omp_max_threads
                                  // if the user do not provide a smaller number
 };
 // =============================================================================
@@ -245,7 +245,7 @@ struct ParU_Control
 // =============================================================================
 // ParU_Numeric contains all the numeric information that user needs for solving
 // a system. The factors are saved as a seried of dense matrices. User can check
-// the ParU_Ret to see if the factorization is successfull. sizes of
+// the ParU_Ret to see if the factorization is successful. sizes of
 // ParU_Numeric is size of S matrix in Symbolic analysis.
 struct ParU_Factors
 {               // dense factorized part pointer
