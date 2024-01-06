@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include "cholmod_template.h"
+#include "cholmod_internal.h"
 #include "cholmod_gpu_kernels.h"
 #include <fenv.h>
 #include <cuda.h>

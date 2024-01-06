@@ -9,6 +9,7 @@
 //------------------------------------------------------------------------------
 
 #include "cholmod_template.h"
+#include "cholmod_internal.h"
 
 // Template routine for cholmod_super_numeric.  All xtypes supported, except
 // that a zomplex A and F result in a complex L (there is no supernodal zomplex
