@@ -12,9 +12,9 @@
 # cmake 3.22 is required to find the BLAS/LAPACK
 cmake_minimum_required ( VERSION 3.22 )
 
-set ( CHOLMOD_DATE "Jan XX, 2024" ) # FIXME for 7.5.0
+set ( CHOLMOD_DATE "Feb XX, 2024" )
 set ( CHOLMOD_VERSION_MAJOR 5 CACHE STRING "" FORCE )
-set ( CHOLMOD_VERSION_MINOR 1 CACHE STRING "" FORCE )
+set ( CHOLMOD_VERSION_MINOR 2 CACHE STRING "" FORCE )
 set ( CHOLMOD_VERSION_SUB   1 CACHE STRING "" FORCE )
 
 message ( STATUS "Building CHOLMOD version: v"
@@ -84,9 +84,6 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 option ( CHOLMOD_USE_OPENMP "ON: Use OpenMP in CHOLMOD if available.  OFF: Do not use OpenMP.  (Default: SUITESPARSE_USE_OPENMP)" ${SUITESPARSE_USE_OPENMP} )
-if ( NOT SUITESPARSE_USE_OPENMP )
-    set ( CHOLMOD_USE_OPENMP "OFF" CACHE STRING "" FORCE )
-endif ( )
 if ( CHOLMOD_USE_OPENMP )
     if ( CMAKE_VERSION VERSION_LESS 3.24 )
         find_package ( OpenMP COMPONENTS C )
@@ -98,7 +95,7 @@ else ( )
     set ( OpenMP_C_FOUND OFF )
 endif ( )
 
-if ( OpenMP_C_FOUND )
+if ( CHOLMOD_USE_OPENMP AND OpenMP_C_FOUND )
     set ( CHOLMOD_HAS_OPENMP ON )
 else ( )
     set ( CHOLMOD_HAS_OPENMP OFF )
@@ -115,22 +112,22 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    find_package ( SuiteSparse_config 7.5.0
+    find_package ( SuiteSparse_config 7.7.0
         PATHS ${CMAKE_SOURCE_DIR}/../SuiteSparse_config/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::SuiteSparseConfig )
-        find_package ( SuiteSparse_config 7.5.0 REQUIRED )
+        find_package ( SuiteSparse_config 7.7.0 REQUIRED )
     endif ( )
 
-    find_package ( AMD 3.3.1
+    find_package ( AMD 3.3.2
         PATHS ${CMAKE_SOURCE_DIR}/../AMD/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::AMD )
-        find_package ( AMD 3.3.1 REQUIRED )
+        find_package ( AMD 3.3.2 REQUIRED )
     endif ( )
 
-    find_package ( COLAMD 3.3.1
+    find_package ( COLAMD 3.3.3
         PATHS ${CMAKE_SOURCE_DIR}/../COLAMD/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::COLAMD )
-        find_package ( COLAMD 3.3.1 REQUIRED )
+        find_package ( COLAMD 3.3.3 REQUIRED )
     endif ( )
 endif ( )
 
@@ -234,16 +231,16 @@ endif ( )
 
     if ( CHOLMOD_CAMD AND NOT SUITESPARSE_ROOT_CMAKELISTS )
         # find CAMD and CCOLAMD
-        find_package ( CAMD 3.3.1
+        find_package ( CAMD 3.3.2
             PATHS ${CMAKE_SOURCE_DIR}/../CAMD/build NO_DEFAULT_PATH )
         if ( NOT TARGET SuiteSparse::CAMD )
-            find_package ( CAMD 3.3.1 )
+            find_package ( CAMD 3.3.2 )
         endif ( )
 
-        find_package ( CCOLAMD 3.3.1
+        find_package ( CCOLAMD 3.3.3
             PATHS ${CMAKE_SOURCE_DIR}/../CCOLAMD/build NO_DEFAULT_PATH )
         if ( NOT TARGET SuiteSparse::CCOLAMD )
-            find_package ( CCOLAMD 3.3.1 )
+            find_package ( CCOLAMD 3.3.3 )
         endif ( )
 
         if ( NOT CAMD_FOUND OR NOT CCOLAMD_FOUND )
@@ -366,7 +363,7 @@ if ( BUILD_STATIC_LIBS )
         OUTPUT_NAME cholmod
         PUBLIC_HEADER "Include/cholmod.h" )
 
-    if ( MSVC )
+    if ( MSVC OR ("${CMAKE_C_SIMULATE_ID}" STREQUAL "MSVC") )
         set_target_properties ( CHOLMOD_static PROPERTIES
             OUTPUT_NAME cholmod_static )
     endif ( )
@@ -554,10 +551,10 @@ if ( CHOLMOD_HAS_CUDA )
         endif ( )
     endif ( )
 
-    set ( old_CMAKE_EXTRA_INCLUDE_FILES CMAKE_EXTRA_INCLUDE_FILES )
+    set ( _orig_CMAKE_EXTRA_INCLUDE_FILES ${CMAKE_EXTRA_INCLUDE_FILES} )
     list ( APPEND CMAKE_EXTRA_INCLUDE_FILES "stdlib.h" )
     check_type_size ( "__compar_fn_t" COMPAR_FN_T )
-    set ( CMAKE_EXTRA_INCLUDE_FILES old_CMAKE_EXTRA_INCLUDE_FILES )
+    set ( CMAKE_EXTRA_INCLUDE_FILES ${_orig_CMAKE_EXTRA_INCLUDE_FILES} )
 
     if ( NOT HAVE_COMPAR_FN_T )
         if ( BUILD_SHARED_LIBS )

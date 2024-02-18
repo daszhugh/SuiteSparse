@@ -79,9 +79,11 @@ jobs:
               -DCMAKE_CUDA_COMPILER_LAUNCHER="ccache"
             openmp: with
             link: static
+            # "Fake" a cross-compilation to exercise that build system path
             link-cmake-flags:
               -DBUILD_SHARED_LIBS=OFF
               -DBUILD_STATIC_LIBS=ON
+              -DCMAKE_SYSTEM_NAME="Linux"
 
     env:
       CC: ${{ matrix.cc }}
@@ -92,7 +94,7 @@ jobs:
         run: lscpu
 
       - name: checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: install dependencies
         env:
@@ -113,7 +115,7 @@ jobs:
 
       - name: restore ccache
         # setup the GitHub cache used to maintain the ccache from one job to the next
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: ~/.ccache
           key: ${{ steps.ccache-prepare.outputs.key }}
@@ -190,7 +192,7 @@ jobs:
       - name: save ccache
         # Save the cache after we are done (successfully) building
         # This helps to retain the ccache even if the subsequent steps are failing.
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         with:
           path: ~/.ccache
           key: ${{ steps.ccache-prepare.outputs.key }}
@@ -346,7 +348,7 @@ jobs:
           msystem: ${{ matrix.msystem }}
 
       - name: checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: prepare ccache
         # create key with human readable timestamp
@@ -358,7 +360,7 @@ jobs:
 
       - name: restore ccache
         # Setup the GitHub cache used to maintain the ccache from one job to the next
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: ${{ steps.ccache-prepare.outputs.ccachedir }}
           key: ${{ steps.ccache-prepare.outputs.key }}
@@ -423,7 +425,7 @@ jobs:
       - name: save ccache
         # Save the cache after we are done (successfully) building
         # This helps to retain the ccache even if the subsequent steps are failing.
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         with:
           path: ${{ steps.ccache-prepare.outputs.ccachedir }}
           key: ${{ steps.ccache-prepare.outputs.key }}

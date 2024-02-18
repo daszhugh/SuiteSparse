@@ -43,10 +43,10 @@ set ( DEMO_OK false )
 
 if ( NOT SUITESPARSE_ROOT_CMAKELISTS AND SUITESPARSE_DEMOS AND DEMO_OK )
     # for the demo only:
-    find_package ( CHOLMOD 5.1.1
+    find_package ( CHOLMOD 5.2.0
         PATHS ${CMAKE_SOURCE_DIR}/../../CHOLMOD/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::CHOLMOD )
-        find_package ( CHOLMOD 5.1.1 )
+        find_package ( CHOLMOD 5.2.0 )
     endif ( )
 endif ( )
 
@@ -66,7 +66,12 @@ configure_file ( "Config/GPUQREngine.hpp.in"
 
 #-------------------------------------------------------------------------------
 
-file ( GLOB GPUQRENGINE_SOURCES "Source/*.cpp" "Source/*.cu" "Source/*/*.cpp" )
+file ( GLOB GPUQRENGINE_SOURCES "Source/*.cpp"
+    "Source/*.cu"
+    "Source/BucketList/BucketList.cpp"
+    "Source/LLBundle/LLBundle.cpp"
+    "Source/Scheduler/Scheduler.cpp"
+    "Source/TaskDescriptor/*.cpp" )
 
 set ( GPUQRENGINE_INCLUDES Include Include/Kernel
     Include/Kernel/Apply Include/Kernel/Assemble Include/Kernel/Factorize )
@@ -120,7 +125,7 @@ if ( BUILD_STATIC_LIBS )
         OUTPUT_NAME gpuqrengine
         PUBLIC_HEADER "Include/GPUQREngine.hpp" )
 
-    if ( MSVC )
+    if ( MSVC OR ("${CMAKE_CXX_SIMULATE_ID}" STREQUAL "MSVC") )
         set_target_properties ( GPUQREngine_static PROPERTIES
             OUTPUT_NAME gpuqrengine_static )
     endif ( )

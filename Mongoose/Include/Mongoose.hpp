@@ -20,13 +20,13 @@
 // Configuration information from CMake
 #define Mongoose_VERSION_MAJOR 3
 #define Mongoose_VERSION_MINOR 3
-#define Mongoose_VERSION_PATCH 1
-#define Mongoose_DATE "Jan XX, 2024"
+#define Mongoose_VERSION_PATCH 3
+#define Mongoose_DATE "Feb XX, 2024"
 
-#define Mongoose__VERSION SUITESPARSE__VERCODE(3,3,1)
+#define Mongoose__VERSION SUITESPARSE__VERCODE(3,3,3)
 #if !defined (SUITESPARSE__VERSION) || \
-    (SUITESPARSE__VERSION < SUITESPARSE__VERCODE(7,5,0))
-#error "Mongoose 3.3.1 requires SuiteSparse_config 7.5.0 or later"
+    (SUITESPARSE__VERSION < SUITESPARSE__VERCODE(7,7,0))
+#error "Mongoose 3.3.3 requires SuiteSparse_config 7.7.0 or later"
 #endif
 
 #if defined (_MSC_VER) && ! defined (__INTEL_COMPILER)

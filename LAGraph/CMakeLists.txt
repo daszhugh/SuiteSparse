@@ -39,10 +39,10 @@
 cmake_minimum_required ( VERSION 3.20 ) # LAGraph can be built stand-alone
 
 # version of LAGraph
-set ( LAGraph_DATE "Jan XX, 2024" )     # FIXME for 7.5.0
+set ( LAGraph_DATE "Feb XX, 2024" )
 set ( LAGraph_VERSION_MAJOR 1 CACHE STRING "" FORCE )
 set ( LAGraph_VERSION_MINOR 1 CACHE STRING "" FORCE )
-set ( LAGraph_VERSION_SUB   1 CACHE STRING "" FORCE )
+set ( LAGraph_VERSION_SUB   3 CACHE STRING "" FORCE )
 
 message ( STATUS "Building LAGraph version: v"
     ${LAGraph_VERSION_MAJOR}.
@@ -162,9 +162,6 @@ endif ( )
 #-------------------------------------------------------------------------------
 
 option ( LAGRAPH_USE_OPENMP "ON: Use OpenMP in LAGraph if available.  OFF: Do not use OpenMP.  (Default: SUITESPARSE_USE_OPENMP)" ${SUITESPARSE_USE_OPENMP} )
-if ( NOT SUITESPARSE_USE_OPENMP )
-    set ( LAGRAPH_USE_OPENMP "OFF" CACHE STRING "" FORCE )
-endif ( )
 if ( COVERAGE )
     set ( LAGRAPH_USE_OPENMP "OFF" CACHE STRING "" FORCE ) # OK: test coverage is enabled
     message ( STATUS "OpenMP disabled for test coverage" )
@@ -184,7 +181,7 @@ else ( )
     endif ( )
 endif ( )
 
-if ( OpenMP_C_FOUND )
+if ( LAGRAPH_USE_OPENMP AND OpenMP_C_FOUND )
     set ( LAGRAPH_HAS_OPENMP ON )
 else ( )
     set ( LAGRAPH_HAS_OPENMP OFF )
@@ -250,13 +247,13 @@ elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "Intel" )
     #if ( CMAKE_C_COMPILER_VERSION VERSION_LESS 18.0 )
     #    message ( FATAL_ERROR "icc version must be at least 18.0" )
     #endif ( )
-elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" )
+elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" AND NOT "${CMAKE_C_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC" )
     # options for clang
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -O3 " )
     #if ( CMAKE_C_COMPILER_VERSION VERSION_LESS 3.3 )
     #    message ( FATAL_ERROR "clang version must be at least 3.3" )
     #endif ( )
-elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC" )
+elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC" OR "${CMAKE_C_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC" )
     # options for MicroSoft Visual Studio
 elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "PGI" )
     # options for PGI pgcc compiler

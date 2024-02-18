@@ -1,4 +1,16 @@
-Jan XX, 2024: version 5.1.1     FIXME for 7.5.0
+Feb XX, 2024: version 5.2.1
+
+    * minor updates to build system
+
+Jan 20, 2024: version 5.2.0
+
+    * bug fix:  CHOLMOD 5.1.0 added a new variable in the CHOLMOD Common
+        struct for development only but this change broke ABI compatibility
+        since the SOVERSION was not bumped at the same time.  v5.2.0 reverts
+        this change so the new variable does not appear in production, thus
+        restoring ABI compatibility with v5.0.x.
+
+Jan 10, 2024: version 5.1.1
 
     * MATLAB interface:  add -DNO_SSIZE_T for Windows
     * minor updates to build system

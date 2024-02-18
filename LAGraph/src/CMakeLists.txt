@@ -63,7 +63,7 @@ if ( BUILD_STATIC_LIBS )
         C_STANDARD 11
         PUBLIC_HEADER "include/LAGraph.h" )
 
-    if ( MSVC )
+    if ( MSVC OR ("${CMAKE_C_SIMULATE_ID}" STREQUAL "MSVC") )
         set_target_properties ( LAGraph_static PROPERTIES
             OUTPUT_NAME lagraph_static )
     endif ( )
@@ -90,7 +90,7 @@ endif ( )
 # add OpenMP
 #-------------------------------------------------------------------------------
 
-if ( OpenMP_C_FOUND )
+if ( LAGRAPH_HAS_OPENMP )
     if ( BUILD_SHARED_LIBS )
         target_link_libraries ( LAGraph PRIVATE OpenMP::OpenMP_C )
     endif ( )

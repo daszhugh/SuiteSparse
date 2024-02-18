@@ -11,10 +11,10 @@
 
 cmake_minimum_required ( VERSION 3.22 )
 
-set ( COLAMD_DATE "Jan XX, 2024" )  # FIXME for 7.5.0
+set ( COLAMD_DATE "Feb XX, 2024" )  # FIXME for 7.7.0
 set ( COLAMD_VERSION_MAJOR 3 CACHE STRING "" FORCE )
 set ( COLAMD_VERSION_MINOR 3 CACHE STRING "" FORCE )
-set ( COLAMD_VERSION_SUB   1 CACHE STRING "" FORCE )
+set ( COLAMD_VERSION_SUB   3 CACHE STRING "" FORCE )
 
 message ( STATUS "Building COLAMD version: v"
     ${COLAMD_VERSION_MAJOR}.
@@ -43,10 +43,10 @@ include ( SuiteSparsePolicy )
 #-------------------------------------------------------------------------------
 
 if ( NOT SUITESPARSE_ROOT_CMAKELISTS )
-    find_package ( SuiteSparse_config 7.5.0
+    find_package ( SuiteSparse_config 7.7.0
         PATHS ${CMAKE_SOURCE_DIR}/../SuiteSparse_config/build NO_DEFAULT_PATH )
     if ( NOT TARGET SuiteSparse::SuiteSparseConfig )
-        find_package ( SuiteSparse_config 7.5.0 REQUIRED )
+        find_package ( SuiteSparse_config 7.7.0 REQUIRED )
     endif ( )
 endif ( )
 
@@ -104,7 +104,7 @@ if ( BUILD_STATIC_LIBS )
         C_STANDARD_REQUIRED ON
         PUBLIC_HEADER "Include/colamd.h" )
 
-    if ( MSVC )
+    if ( MSVC OR ("${CMAKE_C_SIMULATE_ID}" STREQUAL "MSVC") )
         set_target_properties ( COLAMD_static PROPERTIES
             OUTPUT_NAME colamd_static )
     endif ( )
