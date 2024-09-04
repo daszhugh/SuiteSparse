@@ -74,7 +74,7 @@
  * below.
  */
 
-#define UMFPACK_DATE "June XX, 2024"
+#define UMFPACK_DATE "June 20, 2024"
 #define UMFPACK_MAIN_VERSION   6
 #define UMFPACK_SUB_VERSION    3
 #define UMFPACK_SUBSUB_VERSION 4
@@ -246,7 +246,7 @@
 /* used in UMFPACK_*solve only: */
 #define UMFPACK_IRSTEP 7                /* max # of iterative refinements */
 
-/* compile-time settings - Control [8..11] cannot be changed at run time: */
+/* compile-time settings - Control [8] cannot be changed at run time: */
 #define UMFPACK_COMPILED_WITH_BLAS 8        /* uses the BLAS */
 
 // strategy control (added for v6.0.0)

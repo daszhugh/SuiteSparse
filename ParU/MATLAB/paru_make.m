@@ -63,6 +63,9 @@ end
 % -R2018a: interleaved complex is required
 flags = '-O -R2018a -silent ' ;
 
+% developer-only flag, for testing only, not intended for end users:
+flags = [flags ' -DDEVELOPER=1 ' ] ;
+
 if (ispc)
     % MSVC does not define ssize_t
     flags = [flags ' -DNO_SSIZE_T -DNTIMER -DBLAS_NO_UNDERSCORE '] ;

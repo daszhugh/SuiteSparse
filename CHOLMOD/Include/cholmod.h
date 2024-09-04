@@ -246,7 +246,7 @@
 // version control
 //------------------------------------------------------------------------------
 
-#define CHOLMOD_DATE "June XX, 2024"
+#define CHOLMOD_DATE "June 20, 2024"
 #define CHOLMOD_MAIN_VERSION   5
 #define CHOLMOD_SUB_VERSION    3
 #define CHOLMOD_SUBSUB_VERSION 0
@@ -359,7 +359,7 @@ int cholmod_l_version (int version [3]) ;
 #define CHOLMOD_HAS_MATRIXOPS
 #define CHOLMOD_HAS_MODIFY
 #define CHOLMOD_HAS_SUPERNODAL
-#define CHOLMOD_HAS_CUDA
+/* #undef CHOLMOD_HAS_CUDA */
 #define CHOLMOD_HAS_OPENMP
 
 #if defined(MATLAB_MEX_FILE) || defined(MATHWORKS)

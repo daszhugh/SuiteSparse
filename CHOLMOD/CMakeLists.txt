@@ -12,7 +12,7 @@
 # cmake 3.22 is required to find the BLAS/LAPACK
 cmake_minimum_required ( VERSION 3.22 )
 
-set ( CHOLMOD_DATE "June XX, 2024" ) # FIXME NOW
+set ( CHOLMOD_DATE "June 20, 2024" )
 set ( CHOLMOD_VERSION_MAJOR 5 CACHE STRING "" FORCE )
 set ( CHOLMOD_VERSION_MINOR 3 CACHE STRING "" FORCE )
 set ( CHOLMOD_VERSION_SUB   0 CACHE STRING "" FORCE )
@@ -383,7 +383,8 @@ if ( BUILD_SHARED_LIBS )
         OUTPUT_NAME cholmod
         SOVERSION ${CHOLMOD_VERSION_MAJOR}
         PUBLIC_HEADER "Include/cholmod.h"
-        WINDOWS_EXPORT_ALL_SYMBOLS ON )
+        WINDOWS_EXPORT_ALL_SYMBOLS ON
+        LINKER_LANGUAGE C )
 
     if ( CHOLMOD_HAS_CUDA )
         set_target_properties ( CHOLMOD PROPERTIES CUDA_SEPARABLE_COMPILATION ON )
@@ -410,7 +411,8 @@ if ( BUILD_STATIC_LIBS )
         C_STANDARD 11
         C_STANDARD_REQUIRED ON
         OUTPUT_NAME cholmod
-        PUBLIC_HEADER "Include/cholmod.h" )
+        PUBLIC_HEADER "Include/cholmod.h"
+        LINKER_LANGUAGE C )
 
     if ( MSVC OR ("${CMAKE_C_SIMULATE_ID}" STREQUAL "MSVC") )
         set_target_properties ( CHOLMOD_static PROPERTIES

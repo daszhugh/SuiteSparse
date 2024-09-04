@@ -78,6 +78,10 @@ int main(int argc, char **argv)
     ParU_Set (PARU_CONTROL_MAX_THREADS, 4, Control) ;
     ParU_Set (PARU_CONTROL_STRATEGY, PARU_STRATEGY_SYMMETRIC, Control) ;
 
+    int64_t nthreads2 = 0 ;
+    ParU_Get (PARU_CONTROL_NUM_THREADS, &nthreads2, Control) ;
+    printf ("nthreads in use: %d\n", (int32_t) nthreads2) ;
+
     // read in the sparse matrix A
     A = (cholmod_sparse *)cholmod_l_read_matrix(stdin, 1, &mtype, cc);
     int64_t n = A->nrow ;
@@ -260,10 +264,10 @@ int main(int argc, char **argv)
     info = ParU_Get (Sym, Num, PARU_GET_ORDERING, &umf_ordering, Control) ;
     TEST_ASSERT_INFO (info == PARU_SUCCESS, info) ;
 
-    info = ParU_Get (Sym, Num, PARU_GET_LNZ, &lnz, Control) ;
+    info = ParU_Get (Sym, Num, PARU_GET_LNZ_BOUND, &lnz, Control) ;
     TEST_ASSERT_INFO (info == PARU_SUCCESS, info) ;
 
-    info = ParU_Get (Sym, Num, PARU_GET_UNZ, &unz, Control) ;
+    info = ParU_Get (Sym, Num, PARU_GET_UNZ_BOUND, &unz, Control) ;
     TEST_ASSERT_INFO (info == PARU_SUCCESS, info) ;
 
 //  printf ("n: %ld anz: %ld rs1: %ld cs1: %ld \n"
@@ -296,13 +300,13 @@ int main(int argc, char **argv)
     info = ParU_Get (Sym, Num, PARU_GET_MAX_UDIAG, &max_udiag, Control) ;
     TEST_ASSERT_INFO (info == PARU_SUCCESS, info) ;
 
-    info = ParU_Get (NULL, Num, PARU_GET_FLOP_COUNT, &flops, Control) ;
+    info = ParU_Get (NULL, Num, PARU_GET_FLOPS_BOUND, &flops, Control) ;
     TEST_ASSERT_INFO (info == PARU_INVALID, info) ;
 
-    info = ParU_Get (Sym, Num, PARU_GET_FLOP_COUNT, &flops, Control) ;
+    info = ParU_Get (Sym, Num, PARU_GET_FLOPS_BOUND, &flops, Control) ;
     TEST_ASSERT_INFO (info == PARU_SUCCESS, info) ;
 
-    info = ParU_Get (Sym, Num, PARU_GET_FLOP_COUNT, (double *) NULL, Control) ;
+    info = ParU_Get (Sym, Num, PARU_GET_FLOPS_BOUND, (double *) NULL, Control) ;
     TEST_ASSERT_INFO (info == PARU_INVALID, info) ;
 
     printf ("min_udiag: %g max_udiag: %g rcond: %g flops: %g\n",

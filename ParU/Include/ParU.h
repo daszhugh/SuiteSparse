@@ -53,25 +53,25 @@ typedef enum ParU_Info
     PARU_TOO_LARGE = -4         // problem too large for the BLAS
 } ParU_Info ;
 
-#define PARU_DATE "Apr XX, 2024"
-#define PARU_VERSION_MAJOR  1
-#define PARU_VERSION_MINOR  0
+#define PARU_DATE "Aug 20, 2024"
+#define PARU_VERSION_MAJOR  0
+#define PARU_VERSION_MINOR  3
 #define PARU_VERSION_UPDATE 0
 
-#define PARU__VERSION SUITESPARSE__VERCODE(1,0,0)
+#define PARU__VERSION SUITESPARSE__VERCODE(0,3,0)
 #if !defined (SUITESPARSE__VERSION) || \
     (SUITESPARSE__VERSION < SUITESPARSE__VERCODE(7,8,0))
-#error "ParU 1.0.0 requires SuiteSparse_config 7.8.0 or later"
+#error "ParU 0.3.0 requires SuiteSparse_config 7.8.0 or later"
 #endif
 
 #if !defined (UMFPACK__VERSION) || \
     (UMFPACK__VERSION < SUITESPARSE__VERCODE(6,3,4))
-#error "ParU 1.0.0 requires UMFPACK 6.3.4 or later"
+#error "ParU 0.3.0 requires UMFPACK 6.3.4 or later"
 #endif
 
 #if !defined (CHOLMOD__VERSION) || \
     (CHOLMOD__VERSION < SUITESPARSE__VERCODE(5,3,0))
-#error "ParU 1.0.0 requires CHOLMOD 5.3.0 or later"
+#error "ParU 0.3.0 requires CHOLMOD 5.3.0 or later"
 #endif
 
 //  the same values as UMFPACK_STRATEGY defined in UMFPACK/Include/umfpack.h
@@ -94,8 +94,8 @@ typedef enum
     // int64_t scalars:
     PARU_GET_N = 0,                 // # of rows/columns of A and its factors
     PARU_GET_ANZ = 1,               // # of entries in input matrix
-    PARU_GET_LNZ = 2,               // # of entries in L
-    PARU_GET_UNZ = 3,               // # of entries in U
+    PARU_GET_LNZ_BOUND = 2,         // # of entries held in L
+    PARU_GET_UNZ_BOUND = 3,         // # of entries held in U
     PARU_GET_NROW_SINGLETONS = 4,   // # of row singletons
     PARU_GET_NCOL_SINGLETONS = 5,   // # of column singletons
     PARU_GET_STRATEGY = 6,          // strategy used by ParU
@@ -107,7 +107,7 @@ typedef enum
     PARU_GET_Q = 102,               // fill-reducing column ordering
 
     // double scalars:
-    PARU_GET_FLOP_COUNT = 201,      // flop count for factorization
+    PARU_GET_FLOPS_BOUND = 201,     // flop count for factorization (bound)
     PARU_GET_RCOND_ESTIMATE = 202,  // rcond estimate
     PARU_GET_MIN_UDIAG = 203,       // min (abs (diag (U)))
     PARU_GET_MAX_UDIAG = 204,       // max (abs (diag (U)))
@@ -139,6 +139,7 @@ typedef enum
     // int64_t parameter, for ParU_Get only:
     PARU_CONTROL_OPENMP = 1013,               // if ParU compiled with OpenMP;
                                               // (for ParU_Get only, not set)
+    PARU_CONTROL_NUM_THREADS = 1014,          // actual number of threads used
 
     // double parameters for ParU_Set and ParU_Get:
     PARU_CONTROL_PIVOT_TOLERANCE = 2001,      // pivot tolerance
